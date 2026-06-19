@@ -1,26 +1,161 @@
 @import "tailwindcss";
 
+/* Dark mode is driven by a `.dark` class on <html> (set by a no-flash script,
+   default = dark). This variant makes `dark:` utilities respond to that class. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Theme tokens (OKLCH). Light is the :root baseline; .dark overrides.
+   The brand is "live-signal dark": near-black canvas, one committed green.
+--------------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: oklch(0.99 0.003 150);
+  --surface: oklch(0.965 0.006 150);
+  --surface-2: oklch(0.93 0.008 150);
+  --border: oklch(0.88 0.01 150);
+  --border-strong: oklch(0.8 0.012 150);
+
+  --ink: oklch(0.2 0.02 150);
+  --muted: oklch(0.44 0.02 150);
+  --faint: oklch(0.55 0.02 150);
+
+  --live: oklch(0.62 0.16 132);
+  --live-deep: oklch(0.55 0.15 134);
+  --live-glow: oklch(0.62 0.16 132 / 0.28);
+  --on-live: oklch(0.99 0.01 150);
+
+  color-scheme: light;
 }
 
+.dark {
+  --canvas: oklch(0.145 0.006 150);
+  --surface: oklch(0.185 0.008 150);
+  --surface-2: oklch(0.225 0.01 150);
+  --border: oklch(0.3 0.012 150);
+  --border-strong: oklch(0.38 0.014 150);
+
+  --ink: oklch(0.97 0.005 150);
+  --muted: oklch(0.74 0.012 150);
+  --faint: oklch(0.58 0.012 150);
+
+  --live: oklch(0.87 0.21 128);
+  --live-deep: oklch(0.8 0.19 132);
+  --live-glow: oklch(0.87 0.21 128 / 0.32);
+  --on-live: oklch(0.16 0.03 150);
+
+  color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------------------
+   Expose tokens to Tailwind as utilities (bg-canvas, text-ink, border-border…)
+--------------------------------------------------------------------------- */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  --color-live: var(--live);
+  --color-live-deep: var(--live-deep);
+  --color-on-live: var(--on-live);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem; /* keep anchors clear of the sticky nav */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--live);
+  color: var(--on-live);
+}
+
+:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Theme transition only on color properties, applied briefly while toggling. */
+.theme-transition,
+.theme-transition * {
+  transition:
+    background-color 0.35s var(--ease-out-quint),
+    border-color 0.35s var(--ease-out-quint),
+    color 0.35s var(--ease-out-quint),
+    fill 0.35s var(--ease-out-quint),
+    stroke 0.35s var(--ease-out-quint);
+}
+
+/* ---------------------------------------------------------------------------
+   Motion primitives
+--------------------------------------------------------------------------- */
+@keyframes live-halo {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Reveal: content is ALWAYS visible by default (opacity 1). The entrance is purely
+   additive — it only plays once JS adds [data-revealed] on scroll. If that never
+   happens (no JS, reduced motion, crawlers, headless renderers), the content is
+   already there. The reveal enhances a visible default; it never gates it. */
+[data-reveal][data-revealed] {
+  animation: reveal-up 0.7s var(--ease-out-expo) both;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
