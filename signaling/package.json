@@ -1,0 +1,21 @@
+{
+  "name": "letsmeet-signaling",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "description": "LetsMeet signaling server — Socket.io relay for waiting room, host controls, and WebRTC handshake. Deployed separately from the Next.js frontend.",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3"
+  }
+}

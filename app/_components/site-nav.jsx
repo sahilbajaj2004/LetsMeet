@@ -1,6 +1,6 @@
 import Logo from "./logo";
 import ThemeToggle from "./theme-toggle";
-import { ArrowIcon } from "./icons";
+import NavAuth from "./nav-auth";
 
 const LINKS = [
   { href: "#how", label: "How it works" },
@@ -28,19 +28,7 @@ export default function SiteNav() {
 
         <div className="flex items-center gap-2.5">
           <ThemeToggle />
-          <a
-            href="#"
-            className="hidden h-10 items-center rounded-full border border-border px-4 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2 sm:inline-flex"
-          >
-            Sign in
-          </a>
-          <a
-            href="#"
-            className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-live px-4 text-sm font-semibold text-on-live transition-colors hover:bg-live-deep"
-          >
-            Start a call
-            <ArrowIcon className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-0.5" />
-          </a>
+          <NavAuth />
         </div>
       </nav>
     </header>

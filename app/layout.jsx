@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import AuthProvider from "./_components/auth-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,7 +46,7 @@ export default function RootLayout({ children }) {
     >
       <body className="min-h-dvh font-sans">
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

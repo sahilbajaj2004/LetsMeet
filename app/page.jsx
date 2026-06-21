@@ -62,7 +62,7 @@ export default function Home() {
                   className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center motion-safe:animate-[reveal-up_0.8s_var(--ease-out-expo)_both] [animation-delay:240ms]"
                 >
                   <a
-                    href="#"
+                    href="/login"
                     className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-live px-6 font-semibold text-on-live transition-colors hover:bg-live-deep"
                   >
                     Start a call
@@ -269,7 +269,7 @@ export default function Home() {
               </p>
               <div className="relative mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <a
-                  href="#"
+                  href="/login"
                   className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-live px-7 font-semibold text-on-live transition-colors hover:bg-live-deep"
                 >
                   Start a call

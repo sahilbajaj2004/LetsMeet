@@ -6,36 +6,59 @@ Legend tracks plan in `AGENTS.md`. Update as work lands.
 
 ---
 
-## Phase 0 — Environment & Project Setup 🚧
+## Phase 0 — Environment & Project Setup ✅
 
 - [x] Next.js frontend created & runs locally (`next 16.2.9`, App Router)
 - [x] Tailwind CSS installed (`tailwindcss v4`)
-- [ ] Signaling server folder (`signaling/`) created (Express + Socket.io)
-- [ ] Signaling server runs locally on port 4000
-- [ ] MongoDB Atlas / local cluster set up
-- [ ] `MONGODB_URI` in `.env.local`
-- [ ] `mongoose` installed
-- [ ] Google OAuth credentials created (console.cloud.google.com)
-- [ ] `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` in `.env.local`
-- [ ] `next-auth` installed
-- [ ] CORS on signaling allows `localhost:3000`
-- [ ] `NEXT_PUBLIC_SIGNALING_URL` in `.env.local`
-- [ ] `socket.io-client` installed
-- [ ] Frontend ↔ signaling test connection confirmed both ends
+- [x] Signaling server folder (`signaling/`) created (Express 5 + Socket.io 4, ESM)
+- [x] Signaling server runs locally on port 4000 (`GET /` health, `npm start`)
+- [x] MongoDB Atlas cluster reachable — connected to `letsmeet` db (host `letsmeet.dba0wix.mongodb.net`, SRV resolves 3 shards, ping ok)
+- [x] `MONGODB_URI` in `.env.local` (validated via `scripts/test-db.mjs`)
+- [x] `mongoose` installed (`^9.7`) + `lib/mongodb.js` cached-connection helper
+- [x] Google OAuth credentials created (console.cloud.google.com)
+- [x] `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` in `.env.local`
+- [x] `next-auth` installed (**v4** `^4.24` — matches the `NEXTAUTH_*` / `GOOGLE_*` env names already set; v5/Auth.js would need them renamed to `AUTH_*`)
+- [x] CORS on signaling allows `localhost:3000` (`CLIENT_ORIGIN` env)
+- [x] `NEXT_PUBLIC_SIGNALING_URL` in `.env.local`
+- [x] `socket.io-client` installed
+- [x] Frontend ↔ signaling round-trip confirmed both ends (`scripts/test-signaling.mjs`: client got hello + pong; server logged connect/ping/disconnect)
 
-## Phase 1 — Authentication ⬜
+**Phase 0 notes**
+- Structure: Next app at repo root; `signaling/` is a sibling subproject (own `package.json`, own deploy root → Render/Railway). Server deps: `express`, `cors`, `socket.io`, `dotenv`.
+- Secrets: `.env.local` is gitignored & untracked (confirmed). `signaling/.env` (`PORT`, `CLIENT_ORIGIN`) gitignored too.
+- Throwaway checks in `scripts/`: `test-db.mjs`, `test-signaling.mjs`.
+- Run locally: frontend `npm run dev` (:3000); signaling `cd signaling && npm start` (:4000).
+- Repo is **Next 16** (plan targets 14): Turbopack default, async request APIs, `middleware`→`proxy`. Follow `node_modules/next/dist/docs/` over the plan where they differ.
 
-- [ ] NextAuth + Google provider integrated
-- [ ] "Sign in with Google" login page
-- [ ] Session handling + protected routes
-- [ ] Logged-in user data (name, avatar, email) accessible frontend + backend
+## Phase 1 — Authentication ✅
 
-## Phase 2 — Room Creation & Database ⬜
+- [x] NextAuth + Google provider integrated (v4 handler at `app/api/auth/[...nextauth]/route.js`, config in `lib/auth.js`)
+- [x] "Sign in with Google" login page (`app/login/page.jsx` — server guard redirects authed users away)
+- [x] Session handling + protected routes (`AuthProvider` SessionProvider in layout; `/dashboard` guarded via `getServerSession` → 307 to `/login?callbackUrl=`)
+- [x] Logged-in user data (name, avatar, email) accessible frontend (`NavAuth` `useSession`) + backend (`getServerSession` in dashboard)
 
-- [ ] Mongoose schemas: User, Room (TTL index on expiry)
-- [ ] Create Room flow (logged-in only) → room code + shareable link → saved
-- [ ] Room validation route (valid / expired / not found)
-- [ ] "Room not found / expired" UI state
+**Phase 1 notes**
+- NextAuth **v4** App Router: single catch-all `route.js` exports `handler as GET, POST`. JWT session strategy (no DB adapter yet — User collection is Phase 2). `session.user.id` exposed via jwt/session callbacks.
+- Verified live: `/api/auth/providers` lists google; `/api/auth/session` `{}` unauth; `/dashboard` → 307 `/login?callbackUrl=/dashboard`; `/login` 200 w/ button. No log errors.
+- **Not yet tested:** real Google consent round-trip (needs human browser click-through + OAuth redirect URI `http://localhost:3000/api/auth/callback/google` registered in Google console — already configured per Phase 0).
+- Avatar uses plain `<img>` (Google `lh3` host not in next/image allowlist; avatars tiny). Revisit if adding `next.config` `images.remotePatterns`.
+- Landing "Start a call" CTAs now → `/login`. Nav shows avatar + sign-out menu when authed.
+
+## Phase 2 — Room Creation & Database ✅
+
+- [x] Mongoose schemas: `models/User.js`, `models/Room.js` (TTL index `{expiresAt:1}, expireAfterSeconds:0` — verified live in Mongo)
+- [x] Create Room flow (logged-in only): `POST /api/rooms` (getServerSession-gated, unique code w/ retry, 24h expiry) → `{code, url}`; `CreateRoom` UI on dashboard reveals code + copyable link
+- [x] Room validation route: `GET /api/rooms/[code]` → 200 valid / 410 expired / 404 not_found (shared `lib/rooms.js#lookupRoom`)
+- [x] "Room not found / expired" UI state: `app/room/[code]/page.jsx` (valid / expired / not-found); `JoinByCode` form routes here
+
+**Phase 2 notes**
+- User persistence: `lib/auth.js` jwt callback upserts the Google user into `letsmeet.users` on sign-in and stamps `token.id = mongo _id`. So `session.user.id` (and `Room.host`) is the **DB id**, not Google's `sub`. (Until a real Google login runs, the `users` collection only has the seeded sample user.)
+- Code format `abc-defg-hij` via `lib/roomCode.js` (Crockford-ish alphabet, no 0/1/l/o). Unique index is the real guard; route retries 5× on collision.
+- `lookupRoom` checks `expiresAt <= now` explicitly — TTL sweep runs ~60s, so a room can be past-expiry but not yet deleted; the date check closes that window (verified: got `expired` 410 within the window, `not_found` 404 after sweep).
+- Shareable URL built from `NEXTAUTH_URL` ?? request origin.
+- Verified live (curl): valid 200, expired 410, not_found 404, unauth create 401, room page renders all 3 states. No log errors.
+- **Not tested:** create via real session cookie (needs Google login); covered indirectly — route logic + 401 guard confirmed.
+- Throwaway: `scripts/seed-user.mjs`, `scripts/test-rooms.mjs` (`clean` arg to remove test rooms).
 
 ## Phase 3 — Signaling Server Core ⬜
 

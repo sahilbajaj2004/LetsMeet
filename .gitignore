@@ -39,3 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# os junk
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# claude code (keep shared settings.json + skills; ignore local-only)
+.claude/settings.local.json
+.claude/*.local.json
