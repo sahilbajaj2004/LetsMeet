@@ -60,20 +60,47 @@ Legend tracks plan in `AGENTS.md`. Update as work lands.
 - **Not tested:** create via real session cookie (needs Google login); covered indirectly — route logic + 401 guard confirmed.
 - Throwaway: `scripts/seed-user.mjs`, `scripts/test-rooms.mjs` (`clean` arg to remove test rooms).
 
-## Phase 3 — Signaling Server Core ⬜
+## Phase 3 — Signaling Server Core ✅
 
-- [ ] Socket.io connect/disconnect + room join events
-- [ ] Waiting room state machine (pending → accepted/declined → in-call → left/kicked)
-- [ ] Host-side incoming join requests
-- [ ] Accept/decline events propagated to waiting user
+- [x] Socket.io connect/disconnect + room join events (`signaling/index.js` handlers; `room:join` validates room via Mongo)
+- [x] Waiting room state machine (pending → in_call → left; pending → declined; kicked reserved for Phase 6) in `signaling/lib/rooms.js`
+- [x] Host-side incoming join requests (`waiting:request` to host socket; queued requests replayed if host connects after waiters)
+- [x] Accept/decline events propagated (`waiting:accept`→`room:admitted`+`peer:joined`; `waiting:decline`→`room:declined`, re-knock blocked)
 
-## Phase 4 — WebRTC Core (2-person) ⬜
+**Phase 3 notes**
+- Signaling now holds its **own read-only Mongo connection** (`signaling/lib/db.js` + `signaling/models/Room.js`, `strict:false`, collection `rooms`). On `room:join` it reads the room to validate exists/expired and to learn `room.host`. Mongo connects on boot (`[db] connected`, fail-fast). Added `mongoose ^9.7` to `signaling/package.json`, `MONGODB_URI` to `signaling/.env` (gitignored).
+- **Event contract** (frontend Phase 8 must match):
+  - C→S: `room:join {code, identity}` · `waiting:accept {socketId}` · `waiting:decline {socketId}` · `room:leave`
+  - S→C: `room:rejected {reason: not_found|expired|error}` · `room:full` · `room:declined` · `waiting:pending` · `room:admitted {selfId, role, peers[]}` · `waiting:request {socketId, identity}` (host) · `waiting:cancelled {socketId}` (host) · `peer:joined {socketId, identity, role}` · `peer:left {socketId}` · `host:left {socketId}` · `waiting:error {socketId, reason}` (host, accept past cap)
+  - identity `{userId?, name, image?, isGuest}`; role `host|member`.
+- **Host = `room.host` (Mongo id) == joiner `identity.userId`.** Host bypasses waiting room (auto `in_call`). Guests (no userId) never host. Capacity **4** enforced at both join (5th → `room:full`, no waiting entry) and accept (cap reached → `waiting:error`). Members are NOT in the socket.io `code` broadcast group until admitted (no call leakage while pending).
+- Registry is **in-memory** (`Map<code, room>`); process restart drops calls (v1 = basic reconnect: refresh + re-knock). Room entry dropped when last attendee leaves → declined set forgotten with it.
+- **Trust:** signaling compares client-sent `identity.userId` to DB `room.host`. Host id is never exposed by any public API/page (only `hostName` is), so not guessable. Future hardening: signed join token.
+- **Declined-key limitation:** blocked key is `user:<id>` for logged-in, `guest:<lowercased name>` for guests → a guest can rename to dodge a decline. Best-effort v1, Phase 9 hardening.
+- **Deferred:** WebRTC offer/answer/ICE relay → Phase 4. Host kick/mute/end-for-all → Phase 6 (`host:left` currently just notifies, no teardown).
+- Verified live (`scripts/test-waiting-room.mjs`, throwaway): host bypass · pending+request · accept→admitted+peer:joined · decline+re-knock block · 4-cap→room:full · leave→peer:left · freed-slot retry. Plus inline probe: not_found, expired, host:left. No server error/warn lines. `clean` arg drops the seeded room.
+- Run locally: signaling `cd signaling && npm start`; test `node --env-file=.env.local scripts/test-waiting-room.mjs`.
 
-- [ ] `getUserMedia` camera/mic capture
-- [ ] `RTCPeerConnection` between 2 users
-- [ ] offer/answer/ICE exchange via signaling
-- [ ] 1-on-1 call working end to end
-- [ ] TURN/STUN config + tested off home wifi (NAT check)
+## Phase 4 — WebRTC Core (2-person) ✅ (media = manual test)
+
+- [x] `getUserMedia` camera/mic capture (`room-client.jsx` captures on mount, reused for call + self-preview)
+- [x] `RTCPeerConnection` between 2 users (`app/room/[code]/use-webrtc.js`)
+- [x] offer/answer/ICE exchange via signaling (`webrtc:offer|answer|ice` relay in `signaling/index.js`; node-verified)
+- [x] 1-on-1 call working end to end (functional UI; **manual two-browser confirmation pending** — see note)
+- [~] TURN/STUN config: STUN wired (`lib/ice.js`, Google default). **TURN creds + off-wifi NAT test deferred → Phase 9.**
+
+**Phase 4 notes**
+- **Relay events** (forward-only; server never parses SDP/ICE; both ends must be `in_call` same room): `webrtc:offer {to,sdp}`→`{from,sdp}`, `webrtc:answer`, `webrtc:ice {to,candidate}`→`{from,candidate}`. Added to `signaling/index.js`.
+- **Initiator rule (no glare, scales to mesh):** the peer already in the call offers to the newcomer. Existing peer on `peer:joined`→`createOffer`; newcomer from `room:admitted.peers`→opens pc, waits for offer.
+- **ICE-candidate queue:** candidates arriving before `setRemoteDescription` are buffered per-peer and flushed after — fixes the classic race.
+- **ICE config** `lib/ice.js`: `NEXT_PUBLIC_STUN_URLS` (default `stun:stun.l.google.com:19302`, works zero-config) + optional `NEXT_PUBLIC_TURN_URL/_USER/_CRED`. Commented in `.env.local`.
+- **Client structure (React state, no Zustand yet — Zustand lands Phase 5 mesh):** `app/room/[code]/page.jsx` (server validity gate) → renders `RoomClient` for valid rooms. `room-client.jsx` phase machine: `prejoin→connecting→waiting→in_call` + terminal `declined|full|rejected|ended`. Socket lazy-init (stable ref), reconnect-on-mount for StrictMode. Hook `use-webrtc.js` owns pcs Map + remoteStreams/peers state. Components in `app/_components/room/`: `pre-join`, `waiting-view`, `host-approve`, `video-tile`.
+- This builds a **functional** waiting-room + call UI now; **Phase 8 polishes** it (and formalizes identity display — guest=name only already honored).
+- **Verify:**
+  - Relay (node, automated): `node --env-file=.env.local scripts/test-webrtc-relay.mjs` — offer/answer/ice forwarded with `from`; non-`in_call` relay dropped. `clean` arg removes seeded room. ✅ passed.
+  - `npm run build` ✅ compiles (Next 16 build does **not** gate on ESLint; lint advisory). `npm run lint` clean for Phase 4 files (img `<img>` warnings only, same as existing `nav-auth.jsx`).
+  - **Media (manual, REQUIRED — getUserMedia/RTCPeerConnection can't be node-scripted):** `cd signaling && npm start` + `npm run dev`. Tab A signed-in → create room → open → allow camera (host, auto-admitted). Tab B incognito → open link → type guest name → allow camera → knock → host Accepts. Confirm both tiles show live video/audio; Tab B Leave → host sees tile drop (`peer:left`); host Leave → Tab B sees "host ended" (`host:left`). Same-network works on STUN; cross-network/TURN is Phase 9. Debug via `chrome://webrtc-internals`.
+- **Deferred:** mic/cam toggle + screen share → Phase 7; host kick/mute/end-for-all → Phase 6 (`host:left` currently notifies only, no teardown).
 
 ## Phase 5 — Mesh Scaling to 4 ⬜
 
@@ -111,6 +138,24 @@ Legend tracks plan in `AGENTS.md`. Update as work lands.
 - [ ] Room TTL deletion confirmed in MongoDB
 - [ ] 5th joiner rejected ("room full")
 - [ ] Kicked/declined users can't rejoin via same link
+
+---
+
+## Room Lifecycle — Idle Expiry ⬜
+
+**Requirement:** a room auto-deletes **1 hour after it goes idle** — i.e. nobody
+is actively joined to the link. A created-but-never-joined room also dies 1h
+after creation. Active rooms stay alive; the clock only counts idle time.
+
+- [ ] Change Phase 2's fixed 24h `expiresAt` → rolling 1h window (`expiresAt = now + 1h` on create)
+- [ ] Signaling server (Phase 3) bumps `expiresAt = now + 1h` on each join / presence heartbeat while ≥1 participant is connected
+- [ ] When the last participant leaves, leave `expiresAt` as-is → TTL reaps the room ~1h later if no one rejoins
+- [ ] Path for signaling → DB write (internal API route `PATCH /api/rooms/[code]/touch`, or signaling holds its own Mongo connection)
+- [ ] Keep existing TTL index (`{expiresAt:1}, expireAfterSeconds:0`) — only the value written changes; Mongo TTL sweep (~60s) does the deletion
+- [ ] Edge: TTL sweep lag means a room can be 1h+ idle but not yet gone — `lookupRoom` already rejects past-expiry rooms explicitly, so joiners still see "expired"
+
+**Depends on:** Phase 3 (signaling tracks who's connected — that's the only
+source of "active"). Until then, rooms use the simple time-based expiry.
 
 ---
 

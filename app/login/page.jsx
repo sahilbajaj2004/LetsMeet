@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -19,9 +20,9 @@ export default async function LoginPage({ searchParams }) {
     <main className="grid min-h-dvh place-items-center px-5 py-16">
       <div className="w-full max-w-sm">
         <div className="flex justify-center">
-          <a href="/" aria-label="LetsMeet home">
+          <Link href="/" aria-label="LetsMeet home">
             <Logo />
-          </a>
+          </Link>
         </div>
 
         <div className="mt-10 rounded-2xl border border-border bg-canvas p-8 text-center">

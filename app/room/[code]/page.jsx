@@ -1,30 +1,32 @@
 import { lookupRoom } from "@/lib/rooms";
 import SiteNav from "../../_components/site-nav";
 import SiteFooter from "../../_components/site-footer";
+import RoomClient from "./room-client";
 
 export const metadata = {
   title: "Room — LetsMeet",
 };
 
-// Human-friendly "expires in 23h 40m" from a future date.
-function timeLeft(expiresAt) {
-  const ms = new Date(expiresAt).getTime() - Date.now();
-  if (ms <= 0) return "expired";
-  const mins = Math.round(ms / 60000);
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
 export default async function RoomPage({ params }) {
   const { code } = await params;
   const result = await lookupRoom(code);
+
+  // Valid: hand off to the client for the lobby + live call. The socket
+  // re-validates on join, so a room expiring between this render and the knock
+  // still resolves cleanly (room:rejected).
+  if (result.status === "valid") {
+    return (
+      <>
+        <SiteNav />
+        <RoomClient code={result.room.code} hostName={result.room.hostName} />
+      </>
+    );
+  }
 
   return (
     <>
       <SiteNav />
       <main className="mx-auto grid min-h-[calc(100dvh-4rem)] max-w-xl place-items-center px-5 py-16">
-        {result.status === "valid" && <ValidRoom room={result.room} />}
         {result.status === "expired" && (
           <Notice
             tone="warn"
@@ -43,34 +45,6 @@ export default async function RoomPage({ params }) {
       </main>
       <SiteFooter />
     </>
-  );
-}
-
-function ValidRoom({ room }) {
-  return (
-    <div className="w-full rounded-2xl border border-border bg-surface p-8 text-center">
-      <p className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-faint">
-        <span className="size-1.5 rounded-full bg-live" />
-        Active room
-      </p>
-      <p className="mt-4 font-mono text-3xl font-semibold tracking-tight text-ink">
-        {room.code}
-      </p>
-      <p className="mt-3 text-sm text-muted">
-        Hosted by <span className="text-ink">{room.hostName}</span> · expires in{" "}
-        {timeLeft(room.expiresAt)}
-      </p>
-
-      <button
-        disabled
-        className="mt-8 inline-flex h-12 cursor-not-allowed items-center rounded-full bg-live px-7 font-semibold text-on-live opacity-50"
-      >
-        Knock to join
-      </button>
-      <p className="mt-3 text-xs text-faint">
-        The waiting room and live call arrive in the next phases.
-      </p>
-    </div>
   );
 }
 

@@ -1,3 +1,4 @@
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "./_components/auth-provider";
@@ -45,7 +46,12 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <body className="min-h-dvh font-sans">
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* Runs before paint via beforeInteractive (injected into <head>), so the
+            theme is set before React hydrates — no FOUC. A raw <script> tag isn't
+            executed when React renders it; next/script is the supported path. */}
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
