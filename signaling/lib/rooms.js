@@ -12,7 +12,7 @@ import Room from "../models/Room.js";
 //   "pending" → "in_call"       (host accepts)
 //   "pending" → "declined"      (host declines — terminal)
 //   "in_call" → "left"          (disconnect / voluntary leave)
-//   "in_call" → "kicked"        (Phase 6 — reserved, not wired yet)
+//   "in_call" → "kicked"        (host kicks — removed + blocked, Phase 6)
 
 export const MAX_PARTICIPANTS = 4; // mesh cap (AGENTS.md)
 
@@ -75,6 +75,16 @@ export function dropRoomIfEmpty(code) {
     return true;
   }
   return false;
+}
+
+// Phase 6: host-ended teardown — clear everyone and drop the room (declined set
+// goes with it). Live presence only; the Mongo room doc is left to its TTL.
+export function endRoom(code) {
+  const room = registry.get(code);
+  if (!room) return false;
+  room.attendees.clear();
+  registry.delete(code);
+  return true;
 }
 
 // --- role / blocking --------------------------------------------------------

@@ -20,6 +20,7 @@ import {
   removeAttendee,
   listInCall,
   dropRoomIfEmpty,
+  endRoom,
 } from "./lib/rooms.js";
 
 const PORT = Number(process.env.PORT) || 4000;
@@ -76,8 +77,13 @@ function cleanup(socket) {
   if (!attendee) return;
 
   if (attendee.role === "host") {
-    // Phase 6 turns this into a full end-for-all teardown. For now, just notify.
+    // Host gone → the room is over. Notify, evict everyone, drop the room.
     io.to(code).emit("host:left", { socketId: socket.id });
+    for (const id of [...room.attendees.keys()]) {
+      io.sockets.sockets.get(id)?.leave(code);
+    }
+    endRoom(code);
+    return;
   } else if (attendee.state === "pending") {
     // Waiter bailed before the host decided — clear them from the host's queue.
     if (room.hostSocketId) {
@@ -198,6 +204,44 @@ io.on("connection", (socket) => {
     markDeclined(room, target.identity);
     removeAttendee(room, socketId);
     io.to(socketId).emit("room:declined");
+  });
+
+  // --- Host controls (Phase 6) — all gated on this socket being the host ---
+
+  // Mute a participant: the server can't force someone's hardware mic, so it just
+  // tells that client to disable its own audio track (the client enforces it).
+  socket.on("host:mute", ({ socketId } = {}) => {
+    const room = hostRoomFor(socket);
+    if (!room) return;
+    const target = getAttendee(room, socketId);
+    if (!target || target.state !== "in_call" || target.role === "host") return;
+    io.to(socketId).emit("host:muted");
+  });
+
+  // Kick a participant: block re-entry (declined set), remove them, and reuse the
+  // existing peer:left so everyone else tears down their connection to them.
+  socket.on("host:kick", ({ socketId } = {}) => {
+    const room = hostRoomFor(socket);
+    if (!room) return;
+    const target = getAttendee(room, socketId);
+    if (!target || target.role === "host") return;
+    markDeclined(room, target.identity);
+    removeAttendee(room, socketId);
+    io.sockets.sockets.get(socketId)?.leave(room.code);
+    io.to(socketId).emit("room:kicked");
+    io.to(room.code).except(socketId).emit("peer:left", { socketId });
+  });
+
+  // End the call for everyone: broadcast, detach every socket, drop the room.
+  socket.on("host:end", () => {
+    const room = hostRoomFor(socket);
+    if (!room) return;
+    const { code } = room;
+    io.to(code).emit("room:ended");
+    for (const id of [...room.attendees.keys()]) {
+      io.sockets.sockets.get(id)?.leave(code);
+    }
+    endRoom(code);
   });
 
   // --- WebRTC handshake relay (Phase 4) ---

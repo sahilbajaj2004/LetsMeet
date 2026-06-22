@@ -26,7 +26,7 @@ export default async function RoomPage({ params }) {
   return (
     <>
       <SiteNav />
-      <main className="mx-auto grid min-h-[calc(100dvh-4rem)] max-w-xl place-items-center px-5 py-16">
+      <main className="mx-auto grid w-full max-w-xl flex-1 place-items-center px-5 py-16">
         {result.status === "expired" && (
           <Notice
             tone="warn"

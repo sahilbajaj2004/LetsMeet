@@ -102,22 +102,56 @@ Legend tracks plan in `AGENTS.md`. Update as work lands.
   - **Media (manual, REQUIRED — getUserMedia/RTCPeerConnection can't be node-scripted):** `cd signaling && npm start` + `npm run dev`. Tab A signed-in → create room → open → allow camera (host, auto-admitted). Tab B incognito → open link → type guest name → allow camera → knock → host Accepts. Confirm both tiles show live video/audio; Tab B Leave → host sees tile drop (`peer:left`); host Leave → Tab B sees "host ended" (`host:left`). Same-network works on STUN; cross-network/TURN is Phase 9. Debug via `chrome://webrtc-internals`.
 - **Deferred:** mic/cam toggle + screen share → Phase 7; host kick/mute/end-for-all → Phase 6 (`host:left` currently notifies only, no teardown).
 
-## Phase 5 — Mesh Scaling to 4 ⬜
+## Phase 5 — Mesh Scaling to 4 ✅ (media = manual test)
 
-- [ ] Multi-peer connection logic (each peer ↔ every peer)
-- [ ] Quality tested at 3 and 4 participants
-- [ ] Participant-leave cleanup on all sides
+- [x] Multi-peer connection logic (each peer ↔ every peer) — already mesh-ready from Phase 4 (all keyed by socketId), verified the 4-way path
+- [x] Per-peer capture + send-bitrate tuning so the mesh holds at 4 (`lib/media.js`)
+- [x] Per-tile connection status ("Connecting…/Reconnecting…")
+- [x] Participant-leave cleanup on all sides (`peer:left`→`closePeer`; hard drops via `onconnectionstatechange`)
+- [~] Quality at 3 & 4 — manual multi-window test pending
 
-## Phase 6 — Host Controls ⬜
+**Phase 5 notes**
+- Mesh was written mesh-ready in Phase 4: `use-webrtc.js` keys pcs/ICE/streams/peers by socketId, `ensurePeer` idempotent, no-glare initiator rule; signaling already sends `listInCall` to newcomers + enforces cap 4. So **no signaling/peer rewrite** — Phase 5 = UX + media tuning.
+- **NEW `lib/media.js`** — `CAPTURE_CONSTRAINTS` (640×480 @24fps) + `MAX_VIDEO_BITRATE` (500 kbps). getUserMedia uses the constraints; `ensurePeer` caps each video sender via `setParameters` so 3 uplinks fit a home connection. Phase 7 screen share reuses these.
+- `use-webrtc.js` exposes `peerStates` (socketId→connectionState); `video-tile.jsx` shows the connecting pill until `connected`.
+- **Decision:** kept React state (no Zustand) — current useState/useRef mesh is clean; switching adds no behavior.
+- Verify: `npm run lint` clean. Manual: 4 windows on one room → 3 remote tiles each (2×2); leave drops a tile; `chrome://webrtc-internals` shows ≤500 kbps out, ~640×480.
 
-- [ ] Host UI: participant list + mute/kick buttons + end-call-for-all
-- [ ] Kick event (force disconnect + remove from room)
-- [ ] Mute event (client-enforced)
-- [ ] End-call-for-all broadcast + room teardown
+## Phase 6 — Host Controls ✅
 
-## Phase 7 — Member Controls & Screen Share ⬜
+- [x] Host UI: participant list + per-peer mute/kick + end-call-for-all (`host-controls.jsx`, floating panel)
+- [x] Kick event (block re-entry + remove + others clean up via `peer:left`)
+- [x] Mute event (client-enforced — server tells the target to disable its own mic)
+- [x] End-call-for-all broadcast + room teardown (`room:ended` + `endRoom`)
+- [ ] **Host camera-off** (future, requested) — host turns OFF a participant's camera, mirroring host-mute: new `host:cam-off` event → target client disables its own video track (client-enforced, like `host:muted`→mic). Add a Cam-off button next to Mute/Kick in `host-controls.jsx`. Pairs with the Phase 7 self camera toggle.
 
-- [ ] Mute self / camera toggle / leave (all participants)
+**Phase 6 notes**
+- Server (`signaling/`): new `endRoom(code)` in `lib/rooms.js`; three handlers in `index.js`, all guarded by existing `hostRoomFor`:
+  - `host:mute {socketId}` → `host:muted` to target (no server state).
+  - `host:kick {socketId}` → `markDeclined` (blocks re-knock, reuses decline set) + `removeAttendee` + `room:kicked` to target + `peer:left` to others.
+  - `host:end` → `room:ended` to all + evict sockets + `endRoom`.
+  - Host disconnect now also evicts + tears the room down (old `host:left` TODO closed).
+- Client (`room-client.jsx`): `micOn` flag drives audio `track.enabled` (one source of truth for self-toggle + host-mute). Actions `toggleMic/mute/kick/endCall`; listeners `host:muted`→mute, `room:kicked`→kicked screen, `room:ended`→ended screen; new terminal `kicked` phase.
+- **Pulled forward from Phase 7:** self Mute/Unmute now exists (host-mute needs the target able to unmute). Camera toggle + screen share stay Phase 7.
+- **Decision:** mute is quiet — only the target is told; no per-tile mute-state broadcast (Phase 7/8). Your own mic-off shows a badge on your tile.
+- Verify: `npm run lint` clean; `node --check` on signaling files OK. Manual across windows: host mute/kick/end; kicked re-knock blocked; non-host `host:*` = no-op.
+
+## UI Pass — Full-viewport layout & immersive call ✅
+
+- [x] Every page fills the viewport (sticky footer) — `body`→`flex min-h-dvh flex-col`, page `<main>`→`flex-1` (kills the mid-screen footer + blank gap)
+- [x] Room call is immersive full-bleed (`fixed inset-0 z-50`, nav hidden), Meet-style
+- [x] Responsive tile grid by count (1 full · 2 split · 3 two-over-centered · 4 2×2; portrait stacks) — tiles fill their cells (`callGridClass`; `video-tile` drops fixed aspect)
+- [x] Floating control pill (Mute/Unmute · Manage · Leave) + room chip; host's waiting-requests + mute/kick/end in a floating top-right panel (Manage toggle, pending badge)
+
+**UI notes**
+- Files: `app/layout.jsx`, `app/dashboard/page.jsx`, `app/page.jsx`, `app/room/[code]/page.jsx` (shell); `room-client.jsx` + `video-tile.jsx` (call). Self mic-off badge on own tile.
+- Non-call screens (pre-join / waiting / notices) keep the nav + centered layout.
+- Verify: `npm run lint` clean. Manual: dashboard footer pins to bottom; call fills the screen and rearranges at 1/2/3/4.
+
+## Phase 7 — Member Controls & Screen Share 🚧
+
+- [x] Mute self + leave (all participants) — shipped in Phase 6 / UI pass
+- [ ] Camera on/off toggle (all participants)
 - [ ] `getDisplayMedia` screen share (everyone)
 - [ ] One-active-share-at-a-time via Socket.io broadcast
 - [ ] Camera ↔ screen swap via `replaceTrack()`

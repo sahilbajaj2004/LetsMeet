@@ -27,7 +27,7 @@ export default function Home() {
     <>
       <SiteNav />
 
-      <main id="top">
+      <main id="top" className="flex-1">
         {/* ---------------------------------------------------------------- HERO */}
         <section className="relative overflow-hidden">
           <div className="mx-auto max-w-6xl px-5 sm:px-8">

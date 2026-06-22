@@ -12,6 +12,8 @@ export default function VideoTile({
   isYou = false,
   isHost = false,
   status,
+  muted = false,
+  className = "",
 }) {
   const ref = useRef(null);
 
@@ -23,8 +25,11 @@ export default function VideoTile({
   const hasVideo = stream?.getVideoTracks?.().some((t) => t.enabled);
   const progress = connectLabel(status);
 
+  // Fills its grid cell — the call layout sizes cells, the tile just covers them.
   return (
-    <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-surface-2">
+    <div
+      className={`relative size-full min-h-0 overflow-hidden rounded-2xl border border-border bg-surface-2 ${className}`}
+    >
       <video
         ref={ref}
         autoPlay
@@ -46,6 +51,7 @@ export default function VideoTile({
       )}
 
       <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-black/55 to-transparent px-3 py-2">
+        {muted && <MicOffIcon className="size-3.5 shrink-0 text-white" />}
         <span className="truncate text-sm font-medium text-white">
           {name}
           {isYou ? " (you)" : ""}
@@ -57,6 +63,28 @@ export default function VideoTile({
         )}
       </div>
     </div>
+  );
+}
+
+function MicOffIcon({ className }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="2" y1="2" x2="22" y2="22" />
+      <path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2" />
+      <path d="M5 10v2a7 7 0 0 0 12 5" />
+      <path d="M15 9.34V5a3 3 0 0 0-5.68-1.33" />
+      <path d="M9 9v3a3 3 0 0 0 5.12 2.12" />
+      <line x1="12" y1="19" x2="12" y2="22" />
+    </svg>
   );
 }
 
