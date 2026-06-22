@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getIceServers } from "@/lib/ice";
+import { MAX_VIDEO_BITRATE } from "@/lib/media";
 
 // Owns the WebRTC peer mesh for a room. At 2 participants there's a single
 // remote peer, but everything here is keyed by socketId so Phase 5 can scale it
@@ -26,6 +27,8 @@ export function useWebRTC({ socket, localStream }) {
   const [remoteStreams, setRemoteStreams] = useState(new Map());
   // socketId -> { identity, role } (drives tile labels / participant list)
   const [peers, setPeers] = useState(new Map());
+  // socketId -> RTCPeerConnection.connectionState (drives per-tile "Connecting…")
+  const [peerStates, setPeerStates] = useState(new Map());
 
   const upsertMap = (setter, key, value) =>
     setter((prev) => {
@@ -52,6 +55,7 @@ export function useWebRTC({ socket, localStream }) {
     pendingIceRef.current.delete(remoteId);
     deleteFromMap(setRemoteStreams, remoteId);
     deleteFromMap(setPeers, remoteId);
+    deleteFromMap(setPeerStates, remoteId);
   }, []);
 
   // Build (or fetch) the RTCPeerConnection for a remote socket. Idempotent so a
@@ -63,10 +67,19 @@ export function useWebRTC({ socket, localStream }) {
 
       const pc = new RTCPeerConnection({ iceServers: getIceServers() });
       pcsRef.current.set(remoteId, pc);
+      upsertMap(setPeerStates, remoteId, pc.connectionState);
 
       const stream = localStreamRef.current;
       if (stream) {
         for (const track of stream.getTracks()) pc.addTrack(track, stream);
+        // Cap outbound video so a 4-way mesh (3 uplinks) fits a home connection.
+        const vSender = pc.getSenders().find((s) => s.track?.kind === "video");
+        if (vSender) {
+          const params = vSender.getParameters();
+          if (!params.encodings?.length) params.encodings = [{}];
+          params.encodings[0].maxBitrate = MAX_VIDEO_BITRATE;
+          vSender.setParameters(params).catch(() => {}); // unsupported = non-fatal
+        }
       }
 
       pc.onicecandidate = (e) => {
@@ -80,6 +93,7 @@ export function useWebRTC({ socket, localStream }) {
       };
 
       pc.onconnectionstatechange = () => {
+        upsertMap(setPeerStates, remoteId, pc.connectionState);
         if (["failed", "closed"].includes(pc.connectionState)) {
           // peer:left handles intentional removal; this catches hard drops.
           closePeer(remoteId);
@@ -195,7 +209,7 @@ export function useWebRTC({ socket, localStream }) {
     for (const id of [...pcsRef.current.keys()]) closePeer(id);
   }, [closePeer]);
 
-  return { remoteStreams, peers, connectToInitialPeers, closeAll };
+  return { remoteStreams, peers, peerStates, connectToInitialPeers, closeAll };
 }
 
 export default useWebRTC;

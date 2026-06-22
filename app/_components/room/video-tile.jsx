@@ -11,6 +11,7 @@ export default function VideoTile({
   image,
   isYou = false,
   isHost = false,
+  status,
 }) {
   const ref = useRef(null);
 
@@ -20,6 +21,7 @@ export default function VideoTile({
   }, [stream]);
 
   const hasVideo = stream?.getVideoTracks?.().some((t) => t.enabled);
+  const progress = connectLabel(status);
 
   return (
     <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-surface-2">
@@ -37,6 +39,12 @@ export default function VideoTile({
         </div>
       )}
 
+      {progress && (
+        <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white">
+          {progress}
+        </span>
+      )}
+
       <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-black/55 to-transparent px-3 py-2">
         <span className="truncate text-sm font-medium text-white">
           {name}
@@ -50,6 +58,14 @@ export default function VideoTile({
       </div>
     </div>
   );
+}
+
+// Remote-tile connection hint, driven by RTCPeerConnection.connectionState.
+// Self tile passes no status; a connected peer shows nothing.
+function connectLabel(status) {
+  if (!status || status === "connected") return null;
+  if (status === "disconnected" || status === "failed") return "Reconnecting…";
+  return "Connecting…";
 }
 
 // Mirrors the avatar treatment in app/_components/nav-auth.jsx.

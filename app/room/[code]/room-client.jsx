@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { io } from "socket.io-client";
 
 import { useWebRTC } from "./use-webrtc";
+import { CAPTURE_CONSTRAINTS } from "@/lib/media";
 import PreJoin from "../../_components/room/pre-join";
 import WaitingView from "../../_components/room/waiting-view";
 import HostApprove from "../../_components/room/host-approve";
@@ -35,10 +36,8 @@ export default function RoomClient({ code, hostName }) {
   // Identity we joined with (for our own tile). Set in knock().
   const [identity, setIdentity] = useState(null);
 
-  const { remoteStreams, peers, connectToInitialPeers, closeAll } = useWebRTC({
-    socket,
-    localStream,
-  });
+  const { remoteStreams, peers, peerStates, connectToInitialPeers, closeAll } =
+    useWebRTC({ socket, localStream });
 
   const isGuest = status === "authenticated" ? false : true;
 
@@ -48,10 +47,7 @@ export default function RoomClient({ code, hostName }) {
     let stream;
     (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
+        stream = await navigator.mediaDevices.getUserMedia(CAPTURE_CONSTRAINTS);
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -253,9 +249,10 @@ export default function RoomClient({ code, hostName }) {
 
   // in_call
   const self = identity;
+  const tileCount = peers.size + 1;
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-8">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className={`grid gap-3 ${gridClass(tileCount)}`}>
         <VideoTile
           stream={localStream}
           name={self?.name ?? "You"}
@@ -270,6 +267,7 @@ export default function RoomClient({ code, hostName }) {
             name={p.identity?.name ?? "Guest"}
             image={p.identity?.image}
             isHost={p.role === "host"}
+            status={peerStates.get(id)}
           />
         ))}
       </div>
@@ -293,6 +291,14 @@ export default function RoomClient({ code, hostName }) {
       </div>
     </div>
   );
+}
+
+// Tile layout by participant count: lone self stays a single constrained tile;
+// 2 splits side-by-side; 3-4 use a 2×2 (a 3-person call leaves one empty cell).
+function gridClass(count) {
+  if (count <= 1) return "grid-cols-1 max-w-2xl mx-auto";
+  if (count === 2) return "grid-cols-1 sm:grid-cols-2";
+  return "grid-cols-2";
 }
 
 function Centered({ children }) {
