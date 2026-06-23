@@ -22,7 +22,7 @@ export default async function DashboardPage() {
     <>
       <SiteNav />
 
-      <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-4xl flex-col justify-center px-5 py-16 sm:px-8">
+      <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-4xl flex-col justify-center px-5 py-10 sm:px-8 sm:py-16">
         <div className="flex items-center gap-4">
           {image ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="mt-14 grid gap-5 md:grid-cols-2">
-          <section className="rounded-2xl border border-border bg-surface p-10">
+          <section className="rounded-2xl border border-border bg-surface p-6 sm:p-10">
             <h2 className="text-xl font-semibold tracking-tight text-ink">
               Start a room
             </h2>
@@ -59,7 +59,7 @@ export default async function DashboardPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-border bg-surface p-10">
+          <section className="rounded-2xl border border-border bg-surface p-6 sm:p-10">
             <h2 className="text-xl font-semibold tracking-tight text-ink">
               Join a room
             </h2>

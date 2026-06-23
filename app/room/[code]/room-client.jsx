@@ -512,22 +512,24 @@ export default function RoomClient({ code, hostName }) {
       )}
 
       {/* Floating control bar — bottom-center, Meet-style. */}
-      <div className="absolute inset-x-0 bottom-5 z-20 flex justify-center px-4">
-        <div className="flex items-center gap-2 rounded-full border border-border bg-surface/80 p-1.5 shadow-xl backdrop-blur-md">
+      <div className="absolute inset-x-0 bottom-5 z-20 flex justify-center px-3">
+        <div className="flex max-w-full items-center gap-1.5 overflow-x-auto rounded-full border border-border bg-surface/80 p-1.5 shadow-xl backdrop-blur-md scrollbar-none sm:gap-2">
           <button
             onClick={toggleMic}
             aria-pressed={!micOn}
-            className="inline-flex h-10 items-center rounded-full border border-border px-5 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2"
+            className="inline-flex h-10 shrink-0 items-center rounded-full border border-border px-3 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2 sm:px-5"
           >
-            {micOn ? "Mute" : "Unmute"}
+            <span className="sm:hidden">{micOn ? "Mic" : "Unmute"}</span>
+            <span className="hidden sm:inline">{micOn ? "Mute" : "Unmute"}</span>
           </button>
 
           <button
             onClick={toggleCam}
             aria-pressed={!camOn}
-            className="inline-flex h-10 items-center rounded-full border border-border px-5 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2"
+            className="inline-flex h-10 shrink-0 items-center rounded-full border border-border px-3 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2 sm:px-5"
           >
-            {camOn ? "Stop video" : "Start video"}
+            <span className="sm:hidden">{camOn ? "Cam" : "Cam off"}</span>
+            <span className="hidden sm:inline">{camOn ? "Stop video" : "Start video"}</span>
           </button>
 
           <button
@@ -539,16 +541,17 @@ export default function RoomClient({ code, hostName }) {
                 ? "Someone else is sharing"
                 : undefined
             }
-            className="inline-flex h-10 items-center rounded-full border border-border px-5 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:bg-transparent"
+            className="inline-flex h-10 shrink-0 items-center rounded-full border border-border px-3 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:bg-transparent sm:px-5"
           >
-            {sharing ? "Stop sharing" : "Share screen"}
+            <span className="sm:hidden">{sharing ? "Stop" : "Share"}</span>
+            <span className="hidden sm:inline">{sharing ? "Stop sharing" : "Share screen"}</span>
           </button>
 
           {role === "host" && (
             <button
               onClick={() => setShowHostPanel((v) => !v)}
               aria-pressed={showHostPanel}
-              className={`inline-flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-medium transition-colors ${
+              className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-medium transition-colors sm:px-5 ${
                 showHostPanel
                   ? "border-border-strong bg-surface-2 text-ink"
                   : "border-border text-ink hover:border-border-strong hover:bg-surface-2"
@@ -565,7 +568,7 @@ export default function RoomClient({ code, hostName }) {
 
           <button
             onClick={leave}
-            className="inline-flex h-10 items-center rounded-full bg-live px-6 font-semibold text-on-live transition-colors hover:bg-live-deep"
+            className="inline-flex h-10 shrink-0 items-center rounded-full bg-live px-4 font-semibold text-on-live transition-colors hover:bg-live-deep sm:px-6"
           >
             Leave
           </button>

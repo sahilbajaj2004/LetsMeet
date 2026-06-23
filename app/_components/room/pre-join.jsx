@@ -41,13 +41,13 @@ export default function PreJoin({
   }
 
   return (
-    <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface p-8">
+    <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface p-5 sm:p-8">
       <p className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-faint">
         <span className="size-1.5 rounded-full bg-live" />
         Joining room {code}
       </p>
 
-      <div className="relative mt-5 aspect-video overflow-hidden rounded-xl border border-border bg-surface-2 min-h-[360px]">
+      <div className="relative mt-5 aspect-video overflow-hidden rounded-xl border border-border bg-surface-2 min-h-[180px] sm:min-h-[320px]">
         <video
           ref={videoRef}
           autoPlay
