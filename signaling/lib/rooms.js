@@ -59,6 +59,8 @@ export function ensureRoom(code, hostId, hostName) {
       hostId,
       hostName,
       hostSocketId: null,
+      sharingSocketId: null, // who currently holds the one screen-share slot (Phase 7)
+      sharingStreamId: null, // their screen MediaStream.id, so receivers can ID it
       declined: new Set(),
       attendees: new Map(),
     };
@@ -125,8 +127,19 @@ export function isFull(room) {
   return inCallCount(room) >= MAX_PARTICIPANTS;
 }
 
-export function addAttendee(room, socketId, identity, role, state) {
-  const attendee = { socketId, identity, role, state };
+// `media` tracks the attendee's self-reported mic/cam state so a late joiner can
+// render the right avatar-vs-video immediately and the host knows whether to
+// offer "Turn cam on" or "Cam off". The client is the source of truth (it owns
+// the hardware); the server just stores and relays the flags. Defaults to the
+// pre-join choice when provided, else both on.
+export function addAttendee(room, socketId, identity, role, state, media) {
+  const attendee = {
+    socketId,
+    identity,
+    role,
+    state,
+    media: { mic: media?.mic ?? true, cam: media?.cam ?? true },
+  };
   room.attendees.set(socketId, attendee);
   if (role === "host") room.hostSocketId = socketId;
   return attendee;
@@ -134,6 +147,16 @@ export function addAttendee(room, socketId, identity, role, state) {
 
 export function getAttendee(room, socketId) {
   return room.attendees.get(socketId) ?? null;
+}
+
+// Merge a partial media update ({ mic?, cam? }) onto an attendee; returns the
+// new media object (or null if the attendee is gone).
+export function setMedia(room, socketId, patch) {
+  const a = room.attendees.get(socketId);
+  if (!a) return null;
+  if (typeof patch?.mic === "boolean") a.media.mic = patch.mic;
+  if (typeof patch?.cam === "boolean") a.media.cam = patch.cam;
+  return a.media;
 }
 
 export function setState(room, socketId, state) {
@@ -156,7 +179,12 @@ export function listInCall(room, exceptSocketId) {
   const peers = [];
   for (const a of room.attendees.values()) {
     if (a.state === "in_call" && a.socketId !== exceptSocketId) {
-      peers.push({ socketId: a.socketId, identity: a.identity, role: a.role });
+      peers.push({
+        socketId: a.socketId,
+        identity: a.identity,
+        role: a.role,
+        media: a.media,
+      });
     }
   }
   return peers;

@@ -17,6 +17,7 @@ import {
   addAttendee,
   getAttendee,
   setState,
+  setMedia,
   removeAttendee,
   listInCall,
   dropRoomIfEmpty,
@@ -76,6 +77,13 @@ function cleanup(socket) {
   socket.leave(code);
   if (!attendee) return;
 
+  // If the leaver held the screen-share slot, free it so others can share.
+  if (room.sharingSocketId === socket.id) {
+    room.sharingSocketId = null;
+    room.sharingStreamId = null;
+    io.to(code).emit("share:inactive", { socketId: socket.id });
+  }
+
   if (attendee.role === "host") {
     // Host gone → the room is over. Notify, evict everyone, drop the room.
     io.to(code).emit("host:left", { socketId: socket.id });
@@ -100,9 +108,14 @@ io.on("connection", (socket) => {
   console.log(`[socket] connected: ${socket.id}`);
 
   // Knock on a room. Host is auto-admitted; everyone else enters the waiting room.
-  socket.on("room:join", async ({ code, identity: rawIdentity } = {}) => {
+  socket.on("room:join", async ({ code, identity: rawIdentity, media } = {}) => {
     try {
       const identity = cleanIdentity(rawIdentity);
+      // Pre-join mic/cam choice — coerced to booleans, defaults to on.
+      const joinMedia = {
+        mic: media?.mic !== false,
+        cam: media?.cam !== false,
+      };
 
       const check = await validateRoom(code);
       if (check.status !== "ok") {
@@ -117,13 +130,14 @@ io.on("connection", (socket) => {
       // --- Host: skip the waiting room entirely ---
       if (role === "host") {
         socket.join(code);
-        addAttendee(room, socket.id, identity, "host", "in_call");
+        addAttendee(room, socket.id, identity, "host", "in_call", joinMedia);
         const peers = listInCall(room, socket.id);
         socket.emit("room:admitted", { selfId: socket.id, role: "host", peers });
         io.to(code).except(socket.id).emit("peer:joined", {
           socketId: socket.id,
           identity,
           role: "host",
+          media: joinMedia,
         });
         // Replay anyone who knocked before the host connected.
         for (const a of room.attendees.values()) {
@@ -147,7 +161,7 @@ io.on("connection", (socket) => {
       }
 
       // --- Member: enter the waiting room (not yet in the call broadcast group) ---
-      addAttendee(room, socket.id, identity, "member", "pending");
+      addAttendee(room, socket.id, identity, "member", "pending", joinMedia);
       socket.emit("waiting:pending");
       if (room.hostSocketId) {
         io.to(room.hostSocketId).emit("waiting:request", {
@@ -190,7 +204,17 @@ io.on("connection", (socket) => {
       socketId,
       identity: target.identity,
       role: "member",
+      media: target.media,
     });
+    // Catch the newcomer up on an in-progress screen share: the streamId lets
+    // their client tell the sharer's screen track from the camera track. (The
+    // sharer also adds the screen track to this new peer in ensurePeer.)
+    if (room.sharingSocketId) {
+      io.to(socketId).emit("share:active", {
+        socketId: room.sharingSocketId,
+        streamId: room.sharingStreamId,
+      });
+    }
   });
 
   // Host declines a waiter — blocked from re-knocking this session.
@@ -218,6 +242,18 @@ io.on("connection", (socket) => {
     io.to(socketId).emit("host:muted");
   });
 
+  // Toggle a participant's camera. The server can't reach their hardware, so it
+  // asks that client to enable/disable its own video track (the client enforces
+  // it, then echoes the new state back via media:update). Mic stays mute-only by
+  // design — the host can't silently reopen someone's mic.
+  socket.on("host:cam", ({ socketId, on } = {}) => {
+    const room = hostRoomFor(socket);
+    if (!room) return;
+    const target = getAttendee(room, socketId);
+    if (!target || target.state !== "in_call" || target.role === "host") return;
+    io.to(socketId).emit("host:cam", { on: on === true });
+  });
+
   // Kick a participant: block re-entry (declined set), remove them, and reuse the
   // existing peer:left so everyone else tears down their connection to them.
   socket.on("host:kick", ({ socketId } = {}) => {
@@ -227,6 +263,12 @@ io.on("connection", (socket) => {
     if (!target || target.role === "host") return;
     markDeclined(room, target.identity);
     removeAttendee(room, socketId);
+    // Free the share slot if the kicked participant was the one sharing.
+    if (room.sharingSocketId === socketId) {
+      room.sharingSocketId = null;
+      room.sharingStreamId = null;
+      io.to(room.code).emit("share:inactive", { socketId });
+    }
     io.sockets.sockets.get(socketId)?.leave(room.code);
     io.to(socketId).emit("room:kicked");
     io.to(room.code).except(socketId).emit("peer:left", { socketId });
@@ -262,6 +304,48 @@ io.on("connection", (socket) => {
   socket.on("webrtc:ice", ({ to, candidate } = {}) =>
     relay("webrtc:ice", { to, candidate }),
   );
+
+  // --- Screen share (Phase 7) — one active sharer per room, enforced here ---
+  // The presenter adds their screen as a SECOND outbound video track over the
+  // existing peer connections; these events only arbitrate the single share slot
+  // (gating everyone else's Share button) and relay the screen MediaStream.id so
+  // receivers can tell the screen track from the camera track.
+  socket.on("share:start", ({ streamId } = {}) => {
+    const room = getRoom(socket.data?.code);
+    if (!room) return;
+    if (getAttendee(room, socket.id)?.state !== "in_call") return;
+    // Someone else already holds the slot — ignore (the client also gates this).
+    if (room.sharingSocketId && room.sharingSocketId !== socket.id) return;
+    room.sharingSocketId = socket.id;
+    room.sharingStreamId = streamId ? String(streamId) : null;
+    io.to(room.code).emit("share:active", {
+      socketId: socket.id,
+      streamId: room.sharingStreamId,
+    });
+  });
+
+  socket.on("share:stop", () => {
+    const room = getRoom(socket.data?.code);
+    if (!room || room.sharingSocketId !== socket.id) return;
+    room.sharingSocketId = null;
+    room.sharingStreamId = null;
+    io.to(room.code).emit("share:inactive", { socketId: socket.id });
+  });
+
+  // A participant's own mic/cam state changed (self toggle, or enforcing a host
+  // cam/mute). Store it and fan out to the rest of the room so their tile shows
+  // the right avatar/badge and the host panel reflects the live camera state.
+  socket.on("media:update", ({ mic, cam } = {}) => {
+    const room = getRoom(socket.data?.code);
+    if (!room) return;
+    if (getAttendee(room, socket.id)?.state !== "in_call") return;
+    const media = setMedia(room, socket.id, { mic, cam });
+    if (!media) return;
+    io.to(room.code).except(socket.id).emit("peer:media", {
+      socketId: socket.id,
+      media,
+    });
+  });
 
   // Voluntary leave (Leave button). Same teardown as a disconnect.
   socket.on("room:leave", () => {

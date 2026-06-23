@@ -123,7 +123,7 @@ Legend tracks plan in `AGENTS.md`. Update as work lands.
 - [x] Kick event (block re-entry + remove + others clean up via `peer:left`)
 - [x] Mute event (client-enforced — server tells the target to disable its own mic)
 - [x] End-call-for-all broadcast + room teardown (`room:ended` + `endRoom`)
-- [ ] **Host camera-off** (future, requested) — host turns OFF a participant's camera, mirroring host-mute: new `host:cam-off` event → target client disables its own video track (client-enforced, like `host:muted`→mic). Add a Cam-off button next to Mute/Kick in `host-controls.jsx`. Pairs with the Phase 7 self camera toggle.
+- [x] **Host camera-off** — host turns OFF a participant's camera, mirrors host-mute: `host:cam-off` event (server gated by `hostRoomFor`, target must be `in_call` non-host) → target client `setCamOn(false)` → the `camOn` video-track-`.enabled` effect enforces it. "Cam off" button sits between Mute and Kick in `host-controls.jsx`.
 
 **Phase 6 notes**
 - Server (`signaling/`): new `endRoom(code)` in `lib/rooms.js`; three handlers in `index.js`, all guarded by existing `hostRoomFor`:
@@ -148,20 +148,47 @@ Legend tracks plan in `AGENTS.md`. Update as work lands.
 - Non-call screens (pre-join / waiting / notices) keep the nav + centered layout.
 - Verify: `npm run lint` clean. Manual: dashboard footer pins to bottom; call fills the screen and rearranges at 1/2/3/4.
 
-## Phase 7 — Member Controls & Screen Share 🚧
+## Phase 7 — Member Controls & Screen Share ✅ (media = manual test)
 
 - [x] Mute self + leave (all participants) — shipped in Phase 6 / UI pass
-- [ ] Camera on/off toggle (all participants)
-- [ ] `getDisplayMedia` screen share (everyone)
-- [ ] One-active-share-at-a-time via Socket.io broadcast
-- [ ] Camera ↔ screen swap via `replaceTrack()`
-- [ ] Native "Stop sharing" detect via `track.onended` → auto-revert
+- [x] Camera on/off toggle (all participants) — `camOn` flag → video track `.enabled` (same one-source-of-truth pattern as `micOn`); "Stop video/Start video" in the control bar
+- [x] `getDisplayMedia` screen share (everyone) — control-bar "Share screen/Stop sharing"
+- [x] One-active-share-at-a-time via Socket.io broadcast (`share:active`/`share:inactive`, slot held in `room.sharingSocketId`)
+- [x] Screen share = **second video track** (camera stays live) via add-track + renegotiation; mid-share joiners handled in `ensurePeer`
+- [x] Meet-style PiP — presenter's screen is the big tile, their **face cam shows in a top-corner circle** for everyone (the reason for the two-track model)
+- [x] Native "Stop sharing" detect via `track.onended` → auto-revert (drops the screen track, camera continues)
+- [x] **Pre-join mic/cam toggle** — lobby preview has Mic/Camera pill toggles; the chosen state is carried in `room:join {media}` and applied from the first frame in-call
+- [x] **Media-state broadcast** (`media:update`→`peer:media`) — peers know each other's live mic/cam, so a remote camera-off now shows the **avatar** (not a frozen frame) and the host panel reflects live camera state
+- [x] **Host camera toggle both ways** — `host:cam {on}` turns a participant's camera off AND back on (button label flips Cam off ⇄ Cam on). Mic stays **mute-only** by design (host can't silently reopen a mic)
 
-## Phase 8 — Identity Display & Polish ⬜
+**Phase 7 notes**
+- **Camera toggle** mirrors Phase 6 mic exactly: `camOn` state + an effect setting `localStream` video tracks' `.enabled`. Self-toggle and host cam toggle both flip `camOn`. Self tile shows the initials avatar when off (`VideoTile` uses the explicit `videoOn` prop so the switch tracks React state, not the lagging DOM flag).
+- **Media-state model (this pass).** Every attendee carries `media:{mic,cam}` server-side (`rooms.js`), defaulted from the pre-join choice. A client publishes its own state via `media:update` whenever `micOn`/`camOn` change in-call; the server stores it and fans out `peer:media` to the room. `listInCall` + `peer:joined` now include `media`, so a late joiner renders the right avatar/badge from the first frame. **This closed the earlier "remote camera-off = frozen black frame" gap:** the receiver's track stays `.enabled` even after the sender disables it, so tiles trust the explicit `media.cam`/`camOff` flag, not the track. Mute is no longer "quiet" — a peer's mute now shows the mic-off badge on their tile.
+- **Pre-join mic/cam.** `PreJoin` shows Mic/Camera pill toggles over the lobby preview (camera-off hides the preview → "Camera off" placeholder, since a disabled track would otherwise freeze on the last frame). `knock()` sends `room:join {media:{mic,cam}}`; the cam-enforcement effect already runs in the lobby so the local track is disabled immediately.
+- **Host camera both-ways.** `host:cam {socketId, on}` replaces the old one-way `host:cam-off`. Target client sets `camOn` to the requested state → its cam effect enforces it → its `media:update` echoes the new state back, which updates the host's button label (Cam off ⇄ Cam on) and the target's tile everywhere. Per the product call, **mic is mute-only** — there is deliberately no host-unmute.
+- **Screen share — two-track model (rewritten from the initial replaceTrack swap).** The first cut swapped camera→screen on one sender; that made the presenter's face vanish AND fed an infinity mirror on the self-tile. Now the presenter **keeps the camera track and ADDS the screen as a second video track** (`addScreenShare` → `pc.addTrack` on every pc → `renegotiate`), so peers receive two videos and render screen-big + face-circle. `removeScreenShare` drops the screen sender + renegotiates back. Mid-share joiners get the screen track in `ensurePeer` (in their initial offer, no extra round-trip). Self-tile stays on the camera with a "Presenting" badge — never shows its own screen (no mirror).
+- **Screen share — two-track model (rewritten from the initial replaceTrack swap).** The first cut swapped camera→screen on one sender; that made the presenter's face vanish AND fed an infinity mirror on the self-tile. Now the presenter **keeps the camera track and ADDS the screen as a second video track** (`addScreenShare` → `pc.addTrack` on every pc → `renegotiate`), so peers receive two videos and render screen-big + face-circle. `removeScreenShare` drops the screen sender + renegotiates back. Mid-share joiners get the screen track in `ensurePeer` (in their initial offer, no extra round-trip). Self-tile stays on the camera with a "Presenting" badge — never shows its own screen (no mirror).
+  - **Renegotiation is safe from glare:** only the presenter ever re-offers, and the original handshake is long-settled (`stable`). The existing `onOffer`/`onAnswer` handlers already apply a fresh offer to an existing pc, so no new signaling path was needed.
+  - **Receiver classification by stream id:** a presenting peer's two streams are told apart by `MediaStream.id`, relayed over the socket (`share:active {socketId, streamId}`), NOT by SDP guessing. `use-webrtc` buffers all received streams per peer (`peerStreamsRef`) and re-resolves camera vs screen whenever a track arrives or the screen id lands — race-safe in either order. Exposes `remoteScreens` (screen feed) alongside `remoteStreams` (camera) + `setPeerScreen()`.
+  - **Audio rides the camera stream** (screen capture is video-only, `SCREEN_CAPTURE_CONSTRAINTS.audio:false`). So the face-circle `<video>` is **unmuted** on remote tiles — muting it would kill the presenter's voice while the screen (now the main tile) has no audio track.
+- **One-at-a-time** is server-arbitrated: `room.sharingSocketId` + `room.sharingStreamId` are the single slot. `share:start {streamId}` claims it (ignored if held by another), `share:stop`/leave/kick/disconnect frees it; both broadcast `share:active`/`share:inactive` → clients set `activeSharer` (disables everyone else's Share button) and `setPeerScreen` (splits that peer's two videos). Newly-admitted clients are caught up via a targeted `share:active` carrying the streamId. Self id captured from `room:admitted.selfId` (mirrored to `selfIdRef` for the listeners).
+- **Native "Stop sharing"**: `screenTrack.onended` → `stopShare()` (removeScreenShare + releases slot). `stopShare` nulls `onended` before `track.stop()` so the button path doesn't double-fire.
+- **`lib/media.js`** — screen share gets its own `SCREEN_CAPTURE_CONSTRAINTS` (10–15fps, no audio) + `SCREEN_MAX_BITRATE` (1.5 Mbps, higher than the 500 kbps camera cap since it's the focus and carries text). Screen track gets `contentHint="detail"` to favour sharpness over motion. Only one sharer at a time, so the extra uplink doesn't stack across the mesh.
+- **`VideoTile`** — letterboxes the screen (`object-contain` + black bg) so code isn't cropped; adds the `overlayStream` face-circle (top-left, ringed, falls back to an initials bubble when the presenter's cam is off — driven by the explicit `camOff` flag since the receiver track stays enabled).
+- **Event contract** — C→S: `room:join {…, media}` · `media:update {mic,cam}` · `host:cam {socketId, on}` · `host:mute {socketId}` · `share:start {streamId}` · `share:stop`. S→C: `host:cam {on}` (target) · `host:muted` (target) · `peer:media {socketId, media}` (room) · `peer:joined {…, media}` · `share:active {socketId, streamId}` · `share:inactive {socketId}` (room).
+- Verify: `node --check` signaling OK, `npm run lint` clean, `npm run build` ✅. **Manual (REQUIRED — getDisplayMedia/renegotiation can't be node-scripted):** 2+ windows in a room → A clicks Share screen, picks a window → B sees A's **screen as the big tile with A's face in a top-corner circle**, code stays crisp, A still hears/sees nothing weird (A's own tile = camera + "Presenting" badge, no mirror); B's Share button greys out ("Someone else is sharing"). A clicks browser "Stop sharing" → both revert to A's camera, B's button re-enables. A third person joining mid-share immediately sees the screen+circle. `chrome://webrtc-internals` shows the presenter with two outbound video tracks while sharing.
 
-- [ ] Logged-in: full name + avatar
-- [ ] Guest: typed name only, no avatar / placeholder
-- [ ] Waiting room UI (joiner "waiting" view vs host "approve" view)
+## Phase 8 — Identity Display & Polish ✅
+
+- [x] Logged-in: full name + Google avatar (initials-on-accent fallback when no photo)
+- [x] Guest: typed name only, **generic person placeholder** (no avatar, no initials) + a "Guest" badge on the tile
+- [x] Waiting room UI — joiner `WaitingView` (pinging "waiting for host") vs host `HostApprove` (accept/decline list); both built in Phase 3, HostApprove now uses the shared avatar
+
+**Phase 8 notes**
+- **The real gap was guest vs member identity.** Earlier phases already rendered name + avatar on tiles and in both host panels, but a guest looked **identical** to a signed-in user with no Google photo (both got initials-on-accent). AGENTS.md requires guests show "typed name only, no avatar / a generic placeholder" — so guests now render a neutral **person silhouette** (`PersonIcon` on `bg-surface-2`/muted), never initials/accent, reading as distinctly anonymous next to members.
+- **New shared `app/_components/room/avatar.jsx`** — one guest-aware Avatar (rule: photo if signed-in+image → initials if signed-in+no-image → person placeholder if guest). Replaced **three** duplicated local `Avatar` helpers (`video-tile`, `host-approve`, `host-controls`), each previously guest-blind. `isGuest` is threaded from the server identity (`identity.isGuest`, already on every payload) through `room-client` into all three.
+- **`VideoTile`** — uses the shared Avatar for both the main fallback and the presenter face-circle; name bar shows a **"Guest" badge** (when not host) mirroring the existing Host badge. New `PersonIcon` added to `icons.jsx`.
+- Verify: `npm run lint` clean, `npm run build` ✅. **Manual:** join one window signed-in (Google photo on tile + name), another as a guest (typed name, grey person placeholder, "Guest" badge); confirm the host's approve list + controls list show the same guest placeholder, and a signed-in user with no Google photo still gets initials (not the guest placeholder).
 
 ## Phase 9 — Testing & Deployment ⬜
 

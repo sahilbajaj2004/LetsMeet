@@ -76,6 +76,25 @@ export function GoogleIcon({ className }) {
   );
 }
 
+// Generic person silhouette — the placeholder for guests (no Google avatar).
+export function PersonIcon({ className }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
+  );
+}
+
 export function LinkIcon({ className }) {
   return (
     <svg

@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { io } from "socket.io-client";
 
 import { useWebRTC } from "./use-webrtc";
-import { CAPTURE_CONSTRAINTS } from "@/lib/media";
+import { CAPTURE_CONSTRAINTS, SCREEN_CAPTURE_CONSTRAINTS } from "@/lib/media";
 import PreJoin from "../../_components/room/pre-join";
 import WaitingView from "../../_components/room/waiting-view";
 import HostApprove from "../../_components/room/host-approve";
@@ -31,6 +31,19 @@ export default function RoomClient({ code, hostName }) {
   const [localStream, setLocalStream] = useState(null);
   const [mediaError, setMediaError] = useState(null);
   const [micOn, setMicOn] = useState(true);
+  const [camOn, setCamOn] = useState(true);
+
+  // Our own socket id (from room:admitted) — lets us tell "we're the sharer".
+  const [selfId, setSelfId] = useState(null);
+  // Mirror of selfId for the socket listeners, whose effect doesn't re-bind on it.
+  const selfIdRef = useRef(null);
+  useEffect(() => {
+    selfIdRef.current = selfId;
+  }, [selfId]);
+  // Screen share: our own active display capture + who holds the room's one slot.
+  const [sharing, setSharing] = useState(false);
+  const [screenStream, setScreenStream] = useState(null);
+  const [activeSharer, setActiveSharer] = useState(null);
 
   // Host-side waiting room queue.
   const [requests, setRequests] = useState([]);
@@ -40,8 +53,17 @@ export default function RoomClient({ code, hostName }) {
   // Identity we joined with (for our own tile). Set in knock().
   const [identity, setIdentity] = useState(null);
 
-  const { remoteStreams, peers, peerStates, connectToInitialPeers, closeAll } =
-    useWebRTC({ socket, localStream });
+  const {
+    remoteStreams,
+    remoteScreens,
+    peers,
+    peerStates,
+    connectToInitialPeers,
+    addScreenShare,
+    removeScreenShare,
+    setPeerScreen,
+    closeAll,
+  } = useWebRTC({ socket, localStream });
 
   const isGuest = status === "authenticated" ? false : true;
 
@@ -74,6 +96,21 @@ export default function RoomClient({ code, hostName }) {
     for (const t of localStream.getAudioTracks()) t.enabled = micOn;
   }, [micOn, localStream]);
 
+  // Camera on/off mirrors mic: one flag → video track .enabled, flipped by the
+  // self toggle and by a host cam toggle alike.
+  useEffect(() => {
+    if (!localStream) return;
+    for (const t of localStream.getVideoTracks()) t.enabled = camOn;
+  }, [camOn, localStream]);
+
+  // Publish our mic/cam state to the room so peers render the right avatar/badge
+  // and the host panel tracks our live camera. Only while in-call; the value is
+  // also our pre-join baseline (sent again here, which is harmless).
+  useEffect(() => {
+    if (phase !== "in_call") return;
+    socket?.emit("media:update", { mic: micOn, cam: camOn });
+  }, [socket, phase, micOn, camOn]);
+
   // --- socket connection ---
   // Created in an effect, NOT a useState initializer: client components also
   // render on the server for the initial HTML, and io() must never run during
@@ -95,8 +132,9 @@ export default function RoomClient({ code, hostName }) {
       setJoining(false);
       setPhase("waiting");
     };
-    const onAdmitted = ({ role: r, peers: initialPeers }) => {
+    const onAdmitted = ({ selfId: sid, role: r, peers: initialPeers }) => {
       setJoining(false);
+      setSelfId(sid);
       setRole(r);
       setPhase("in_call");
       connectToInitialPeers(initialPeers ?? []);
@@ -136,6 +174,20 @@ export default function RoomClient({ code, hostName }) {
     };
     // Host muted us — flip the shared mic flag; the audio-track effect enforces it.
     const onMuted = () => setMicOn(false);
+    // Host toggled our camera — set camOn to the requested state (the cam effect
+    // enforces it on our track, and the media:update effect echoes it to peers).
+    const onHostCam = ({ on }) => setCamOn(on === true);
+    // Screen-share slot changed somewhere in the room: gate our own Share button
+    // (activeSharer) AND tell the webrtc layer which of that peer's two video
+    // streams is the screen (streamId), so it can split screen vs face circle.
+    const onShareActive = ({ socketId, streamId }) => {
+      setActiveSharer(socketId);
+      if (socketId !== selfIdRef.current) setPeerScreen(socketId, streamId ?? null);
+    };
+    const onShareInactive = ({ socketId }) => {
+      setActiveSharer((cur) => (cur === socketId ? null : cur));
+      if (socketId !== selfIdRef.current) setPeerScreen(socketId, null);
+    };
 
     socket.on("waiting:pending", onPending);
     socket.on("room:admitted", onAdmitted);
@@ -148,6 +200,9 @@ export default function RoomClient({ code, hostName }) {
     socket.on("room:ended", onEnded);
     socket.on("room:kicked", onKicked);
     socket.on("host:muted", onMuted);
+    socket.on("host:cam", onHostCam);
+    socket.on("share:active", onShareActive);
+    socket.on("share:inactive", onShareInactive);
 
     return () => {
       socket.off("waiting:pending", onPending);
@@ -161,8 +216,11 @@ export default function RoomClient({ code, hostName }) {
       socket.off("room:ended", onEnded);
       socket.off("room:kicked", onKicked);
       socket.off("host:muted", onMuted);
+      socket.off("host:cam", onHostCam);
+      socket.off("share:active", onShareActive);
+      socket.off("share:inactive", onShareInactive);
     };
-  }, [socket, connectToInitialPeers, closeAll]);
+  }, [socket, connectToInitialPeers, closeAll, setPeerScreen]);
 
   // Release camera/mic once the call is over for us (kicked or ended), so the
   // hardware indicator goes off without waiting for unmount. Stale localStream is
@@ -170,11 +228,59 @@ export default function RoomClient({ code, hostName }) {
   useEffect(() => {
     if (phase === "kicked" || phase === "ended") {
       localStream?.getTracks().forEach((t) => t.stop());
+      screenStream?.getTracks().forEach((t) => t.stop());
     }
-  }, [phase, localStream]);
+  }, [phase, localStream, screenStream]);
 
   // --- actions ---
   const toggleMic = useCallback(() => setMicOn((v) => !v), []);
+  const toggleCam = useCallback(() => setCamOn((v) => !v), []);
+
+  // Stop sharing: pull the screen track off every peer (camera keeps flowing),
+  // stop the display capture, and release the slot. Nulling onended first so the
+  // track.stop() below doesn't re-enter this via the native "Stop sharing" path.
+  const stopShare = useCallback(() => {
+    setSharing(false);
+    removeScreenShare();
+    setScreenStream((s) => {
+      s?.getTracks().forEach((t) => {
+        t.onended = null;
+        t.stop();
+      });
+      return null;
+    });
+    socket?.emit("share:stop");
+  }, [socket, removeScreenShare]);
+
+  // Start sharing: capture the screen and add it as a SECOND outbound video track
+  // to every peer (face cam stays on), then claim the slot — passing the stream
+  // id so receivers can pick the screen out. Native "Stop sharing" → track.onended.
+  const startShare = useCallback(async () => {
+    if (!socket || sharing) return;
+    let display;
+    try {
+      display = await navigator.mediaDevices.getDisplayMedia(
+        SCREEN_CAPTURE_CONSTRAINTS,
+      );
+    } catch {
+      return; // user dismissed the picker
+    }
+    const track = display.getVideoTracks()[0];
+    if (!track) {
+      display.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    setScreenStream(display);
+    setSharing(true);
+    addScreenShare(display);
+    socket.emit("share:start", { streamId: display.id });
+    track.onended = () => stopShare();
+  }, [socket, sharing, addScreenShare, stopShare]);
+
+  const setPeerCam = useCallback(
+    (socketId, on) => socket?.emit("host:cam", { socketId, on }),
+    [socket],
+  );
 
   const mute = useCallback(
     (socketId) => socket?.emit("host:mute", { socketId }),
@@ -190,8 +296,9 @@ export default function RoomClient({ code, hostName }) {
     socket?.emit("host:end");
     closeAll();
     localStream?.getTracks().forEach((t) => t.stop());
+    screenStream?.getTracks().forEach((t) => t.stop());
     router.push("/dashboard");
-  }, [socket, closeAll, localStream, router]);
+  }, [socket, closeAll, localStream, screenStream, router]);
 
   const knock = useCallback(
     (name) => {
@@ -207,9 +314,10 @@ export default function RoomClient({ code, hostName }) {
       setIdentity(id);
       setJoining(true);
       setPhase("connecting");
-      socket.emit("room:join", { code, identity: id });
+      // Carry the lobby mic/cam choice so peers admit us in the right state.
+      socket.emit("room:join", { code, identity: id, media: { mic: micOn, cam: camOn } });
     },
-    [socket, session, code],
+    [socket, session, code, micOn, camOn],
   );
 
   const accept = useCallback(
@@ -232,8 +340,9 @@ export default function RoomClient({ code, hostName }) {
     socket?.emit("room:leave");
     closeAll();
     localStream?.getTracks().forEach((t) => t.stop());
+    screenStream?.getTracks().forEach((t) => t.stop());
     router.push("/dashboard");
-  }, [socket, closeAll, localStream, router]);
+  }, [socket, closeAll, localStream, screenStream, router]);
 
   // --- render ---
   if (status === "loading") {
@@ -251,6 +360,10 @@ export default function RoomClient({ code, hostName }) {
           previewStream={localStream}
           mediaError={mediaError}
           joining={joining}
+          micOn={micOn}
+          camOn={camOn}
+          onToggleMic={toggleMic}
+          onToggleCam={toggleCam}
           onJoin={knock}
         />
       </Centered>
@@ -329,30 +442,52 @@ export default function RoomClient({ code, hostName }) {
       <div
         className={`grid h-full w-full gap-2 p-2 sm:gap-3 sm:p-3 ${callGridClass(tileCount)}`}
       >
+        {/* Self-tile stays on the camera even while presenting — showing your own
+            screen capture here would feed back into an infinity mirror (you're
+            already looking at that screen). Remote peers get the screen track. */}
         <VideoTile
           stream={localStream}
           name={self?.name ?? "You"}
           image={self?.image}
+          isGuest={self?.isGuest ?? isGuest}
           isYou
           isHost={role === "host"}
           muted={!micOn}
+          videoOn={camOn}
+          presenting={sharing}
         />
-        {peerList.map((p, i) => (
-          <VideoTile
-            key={p.socketId}
-            stream={remoteStreams.get(p.socketId)}
-            name={p.identity?.name ?? "Guest"}
-            image={p.identity?.image}
-            isHost={p.role === "host"}
-            status={peerStates.get(p.socketId)}
-            // 3-up: center the last tile under the top pair on wide screens.
-            className={
-              tileCount === 3 && i === peerList.length - 1
-                ? "sm:col-span-2 sm:mx-auto sm:w-[calc(50%-0.375rem)]"
-                : ""
-            }
-          />
-        ))}
+        {peerList.map((p, i) => {
+          // A presenting peer sends two videos: their screen (main) + camera (the
+          // corner circle). When not presenting, the camera is the main tile.
+          const screen = remoteScreens.get(p.socketId);
+          const camera = remoteStreams.get(p.socketId);
+          const media = p.media ?? { mic: true, cam: true };
+          return (
+            <VideoTile
+              key={p.socketId}
+              stream={screen ?? camera}
+              overlayStream={screen ? camera : null}
+              name={p.identity?.name ?? "Guest"}
+              image={p.identity?.image}
+              isGuest={p.identity?.isGuest ?? false}
+              isHost={p.role === "host"}
+              status={peerStates.get(p.socketId)}
+              muted={!media.mic}
+              // While presenting, the main tile is the screen (always shown); the
+              // cam flag only gates the face circle (handled inside VideoTile via
+              // overlayHasVideo + the track's own enabled state).
+              videoOn={screen ? undefined : media.cam}
+              camOff={!media.cam}
+              presenting={Boolean(screen)}
+              // 3-up: center the last tile under the top pair on wide screens.
+              className={
+                tileCount === 3 && i === peerList.length - 1
+                  ? "sm:col-span-2 sm:mx-auto sm:w-[calc(50%-0.375rem)]"
+                  : ""
+              }
+            />
+          );
+        })}
       </div>
 
       {/* Room chip — top-left, since the nav is hidden during the call. */}
@@ -369,6 +504,7 @@ export default function RoomClient({ code, hostName }) {
           <HostControls
             peers={peerList}
             onMute={mute}
+            onSetCam={setPeerCam}
             onKick={kick}
             onEnd={endCall}
           />
@@ -384,6 +520,28 @@ export default function RoomClient({ code, hostName }) {
             className="inline-flex h-10 items-center rounded-full border border-border px-5 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2"
           >
             {micOn ? "Mute" : "Unmute"}
+          </button>
+
+          <button
+            onClick={toggleCam}
+            aria-pressed={!camOn}
+            className="inline-flex h-10 items-center rounded-full border border-border px-5 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2"
+          >
+            {camOn ? "Stop video" : "Start video"}
+          </button>
+
+          <button
+            onClick={sharing ? stopShare : startShare}
+            disabled={!sharing && !!activeSharer && activeSharer !== selfId}
+            aria-pressed={sharing}
+            title={
+              !sharing && activeSharer && activeSharer !== selfId
+                ? "Someone else is sharing"
+                : undefined
+            }
+            className="inline-flex h-10 items-center rounded-full border border-border px-5 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:bg-transparent"
+          >
+            {sharing ? "Stop sharing" : "Share screen"}
           </button>
 
           {role === "host" && (
@@ -429,7 +587,7 @@ function callGridClass(count) {
 
 function Centered({ children }) {
   return (
-    <div className="mx-auto grid min-h-[calc(100dvh-4rem)] max-w-5xl place-items-center px-5 py-12">
+    <div className="mx-auto grid min-h-dvh max-w-5xl place-items-center px-5 py-12 -mt-16">
       {children}
     </div>
   );

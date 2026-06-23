@@ -1,5 +1,7 @@
 "use client";
 
+import Avatar from "./avatar";
+
 // Host-only panel listing people in the waiting room. Accept moves them into the
 // call; Decline blocks them for the session. Rendered alongside the video grid.
 export default function HostApprove({ requests, onAccept, onDecline }) {
@@ -16,7 +18,11 @@ export default function HostApprove({ requests, onAccept, onDecline }) {
             key={r.socketId}
             className="flex items-center gap-3 rounded-xl border border-border bg-canvas px-3 py-2"
           >
-            <Avatar name={r.identity.name} image={r.identity.image} />
+            <Avatar
+              name={r.identity.name}
+              image={r.identity.image}
+              isGuest={r.identity.isGuest}
+            />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-ink">
                 {r.identity.name}
@@ -41,25 +47,5 @@ export default function HostApprove({ requests, onAccept, onDecline }) {
         ))}
       </ul>
     </div>
-  );
-}
-
-function Avatar({ name, image }) {
-  if (image) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={image}
-        alt={name ?? "Guest"}
-        referrerPolicy="no-referrer"
-        className="size-9 rounded-full object-cover"
-      />
-    );
-  }
-  const initial = (name ?? "?").trim().charAt(0).toUpperCase();
-  return (
-    <span className="grid size-9 place-items-center rounded-full bg-surface-2 text-sm font-semibold text-muted">
-      {initial}
-    </span>
   );
 }

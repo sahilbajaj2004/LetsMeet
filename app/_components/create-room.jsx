@@ -59,7 +59,7 @@ export default function CreateRoom() {
             className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border px-5 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-2"
           >
             <LinkIcon className="size-4 text-muted" />
-            {copied ? "Copied" : "Copy link"}
+            {copied ? "Copied" : "Copy"}
           </button>
         </div>
 
