@@ -43,8 +43,8 @@ export async function POST(request) {
     );
   }
 
-  // Build the shareable link from the request origin (works in dev and prod).
-  const origin = process.env.NEXTAUTH_URL || new URL(request.url).origin;
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
   const url = `${origin}/room/${room.code}`;
 
   return Response.json(
