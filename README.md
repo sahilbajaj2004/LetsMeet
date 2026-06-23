@@ -1,172 +1,250 @@
-# LetsMeet
+# 📹 LetsMeet — Peer-to-Peer Video Rooms
 
-Small, private video rooms for up to a handful of people. Audio and video travel
-**browser to browser** over a peer-to-peer WebRTC mesh — never through a media
-server. Google sign-in to host; guests join with just a name. Every joiner waits
-in a lobby until the host lets them in.
+<p align="center">
+  <img src="public/App.png" alt="LetsMeet App Screenshot" width="100%" />
+</p>
 
-> Status: Phases 0–4 complete (auth, rooms, signaling waiting-room, 2-person
-> WebRTC call). Phase 5 (mesh scaling to 6) is next. See `task.md` for the live
-> checklist and `AGENTS.md` for the full spec.
+<p align="center">
+  <a href="https://bajajletsmeet.vercel.app/"><strong>🌐 Live App</strong></a> ·
+  <a href="https://letsmeet-9ihi.onrender.com"><strong>⚡ Backend (Wake it up)</strong></a>
+</p>
 
-## Architecture
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-14-black?logo=next.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/Socket.io-4-010101?logo=socket.io&logoColor=white" />
+  <img src="https://img.shields.io/badge/WebRTC-P2P-2563EB" />
+  <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-v4-38BDF8?logo=tailwindcss&logoColor=white" />
+  <img src="https://img.shields.io/badge/NextAuth-Google_OAuth-4285F4?logo=google&logoColor=white" />
+</p>
 
-Two separately-deployed services — this split is deliberate (Vercel's serverless
-functions can't hold the persistent socket connection the signaling server needs).
+---
+
+## 🔍 Overview
+
+**LetsMeet** is a private, peer-to-peer video calling app for up to **4 people** — no media server in the middle. Audio and video travel straight browser-to-browser via WebRTC. Sign in with Google to host; guests join with just a display name. Every joiner waits in a lobby until the host lets them in.
+
+- 🟢 **Zero media server** — WebRTC P2P mesh, your video never touches a server
+- 🔐 **Waiting room by default** — host approves every join, no surprise drop-ins
+- 👑 **Host controls** — mute, kick, or end the call for everyone
+- 🖥️ **Screen share** — one person at a time, auto-reverts when you stop sharing
+- 👤 **Guest-friendly** — no account needed to join, just type a name
+- 🔗 **Shareable links** — one link, anyone can knock
+
+> ⚠️ **Backend note:** The signaling server is on Render's free tier and may be sleeping.
+> If the app doesn't connect, [click here to wake it up](https://letsmeet-9ihi.onrender.com), then refresh the page.
+
+---
+
+## 🏗️ Architecture
+
+Two separately deployed services — this split is intentional. Vercel's serverless functions can't hold the persistent Socket.io connection the signaling server needs.
 
 ```
 ┌──────────────────────────┐         ┌──────────────────────────┐
-│ Next.js frontend (:3000) │  socket │ Signaling server (:4000) │
-│ app/ · App Router        │◀───────▶│ signaling/ · Express +   │
-│ pages, API routes, UI    │  .io    │ Socket.io (ESM)          │
+│  Next.js Frontend        │  socket │  Signaling Server        │
+│  bajajletsmeet.vercel.app│◀───────▶│  letsmeet-9ihi.onrender  │
+│  App Router · UI · Auth  │   .io   │  Express + Socket.io 4   │
 └───────────┬──────────────┘         └────────────┬─────────────┘
             │ Mongoose                             │ Mongoose (read-only)
             ▼                                      ▼
-        ┌───────────────── MongoDB Atlas ─────────────────┐
-        │  users · rooms (TTL index → auto-expire)        │
-        └─────────────────────────────────────────────────┘
+      ┌─────────────────── MongoDB Atlas ────────────────────┐
+      │  users · rooms (TTL index → auto-expire)             │
+      └──────────────────────────────────────────────────────┘
 
-   Media (audio/video/screen) goes peer ⇄ peer via WebRTC — it never
-   touches either server or the database.
+  Audio / video / screen share → peer ⇄ peer via WebRTC
+  It never touches either server or the database.
 ```
 
-- **Frontend** (`/`, Next 16 App Router): login, dashboard, room pages, room
-  creation + validation API routes, and the in-browser call client (getUserMedia,
-  RTCPeerConnection, the lobby UI).
-- **Signaling** (`signaling/`, Express 5 + Socket.io 4): the live source of truth
-  for presence and the waiting-room state machine — join requests, host
-  accept/decline, and relaying WebRTC offer/answer/ICE between admitted peers. It
-  holds its own read-only Mongo connection to validate rooms and identify the host.
-- **MongoDB** stores only metadata: users and rooms. Rooms self-delete via a TTL
-  index. No call content is ever stored.
+---
 
-## Tech stack
+## ✨ Features
 
-| Concern | Choice |
+### 🔑 Authentication
+- Sign in with Google — no email/password anywhere
+- Session persists across visits (NextAuth.js)
+- Logged-in users show full name + Google avatar; guests show typed name only
+
+### 🏠 Room Management
+- Only logged-in users can **create** a room
+- Generates a unique code + shareable link
+- Room **auto-expires** and deletes from MongoDB via TTL index — no manual cleanup
+- Anyone can check a code: valid / expired / not found
+
+### 🚪 Waiting Room (everyone waits — logged in or guest)
+- Every joiner enters a lobby first
+- Host sees live "X wants to join" notifications
+- Host accepts or declines each individually
+- Declined users can't rejoin the same session
+
+### 👑 Host Controls
+
+| Action | Description |
 |---|---|
-| Frontend | Next.js 16 (App Router, JSX), Tailwind CSS v4 |
-| Auth | NextAuth v4 — Google provider only (no email/password) |
+| ✅ Accept / ❌ Decline | Approve or reject waiting room requests |
+| 🔇 Mute participant | Force-mute any participant's mic |
+| 🚪 Kick participant | Remove anyone from the call |
+| ☠️ End call for all | Terminate the room for every participant at once |
+
+### 🎛️ Member Controls (everyone has these)
+- Mute / unmute own mic
+- Turn own camera on / off
+- Leave the call individually (doesn't affect others)
+
+### 🖥️ Screen Share
+- Available to all participants — no host gate
+- Only **one person** can share at a time (enforced via Socket.io broadcast)
+- Native browser "Stop sharing" button detected via `track.onended` — auto-reverts to camera
+
+### 🔒 Capacity
+- Max **4 participants** per room (P2P mesh limit)
+- 5th joiner gets "room full" — no lobby entry offered
+
+---
+
+## 🛠️ Tech Stack
+
+| Concern | Technology |
+|---|---|
+| Frontend | Next.js 14 (App Router, JSX) |
+| Styling | Tailwind CSS v4 |
+| Auth | NextAuth.js v4 — Google OAuth only |
 | Database | MongoDB Atlas + Mongoose (TTL index on rooms) |
 | Signaling | Node.js + Express 5 + Socket.io 4 (ESM) |
-| Media | Native WebRTC (`RTCPeerConnection`, `getUserMedia`) — P2P mesh |
-| NAT traversal | STUN (Google public by default); TURN optional |
-| State (frontend) | React state today; Zustand arrives in Phase 5 |
+| Media | Native WebRTC (`RTCPeerConnection`, `getUserMedia`, `getDisplayMedia`) |
+| NAT Traversal | STUN (Google public) + optional TURN |
+| State | Zustand (frontend call state) |
+| Frontend Deploy | Vercel |
+| Signaling Deploy | Render |
 
-## Prerequisites
+---
 
+## 🚀 How a Call Works
+
+```
+1. CREATE   →  Host signs in, clicks "New Room" → gets a code + shareable link
+2. SHARE    →  Host shares the link with up to 3 others
+3. KNOCK    →  Guests open the link, enter a name (or sign in), click "Join"
+4. LOBBY    →  Host sees "X wants to join" — clicks Accept or Decline
+5. CONNECT  →  WebRTC handshake relayed through Socket.io (offer / answer / ICE)
+6. CALL     →  Audio & video flow peer-to-peer — server is out of the loop
+7. LEAVE    →  Anyone can leave; host can kick or end call for all
+```
+
+---
+
+## 🖥️ Running Locally
+
+You need **two terminals** — frontend and signaling server run as separate processes.
+
+### Prerequisites
 - Node.js ≥ 20.9
-- A MongoDB Atlas cluster (or local `mongod`)
-- Google OAuth credentials (Web app) with redirect URI
-  `http://localhost:3000/api/auth/callback/google`
+- MongoDB Atlas cluster (or local `mongod`)
+- Google OAuth credentials — Web app type, redirect URI: `http://localhost:3000/api/auth/callback/google`
 
-## Setup
+### 1. Clone
 
-### 1. Frontend env — `.env.local` (repo root, gitignored)
+```bash
+git clone https://github.com/your-username/letsmeet.git
+cd letsmeet
+```
+
+### 2. Frontend env — `.env.local` (repo root)
 
 ```bash
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
-NEXTAUTH_SECRET=...                 # openssl rand -base64 32
+NEXTAUTH_SECRET=...            # openssl rand -base64 32
 NEXTAUTH_URL=http://localhost:3000
 MONGODB_URI=mongodb+srv://...
 NEXT_PUBLIC_SIGNALING_URL=http://localhost:4000
 
-# WebRTC ICE — optional. STUN defaults to Google public if unset.
+# Optional TURN (needed for strict/corporate networks)
 # NEXT_PUBLIC_STUN_URLS=stun:stun.l.google.com:19302
 # NEXT_PUBLIC_TURN_URL=
 # NEXT_PUBLIC_TURN_USER=
 # NEXT_PUBLIC_TURN_CRED=
 ```
 
-### 2. Signaling env — `signaling/.env` (gitignored)
+### 3. Signaling env — `signaling/.env`
 
 ```bash
 PORT=4000
 CLIENT_ORIGIN=http://localhost:3000
-MONGODB_URI=mongodb+srv://...        # same cluster; signaling reads only
+MONGODB_URI=mongodb+srv://...   # same cluster; signaling is read-only
 ```
 
-### 3. Install
+### 4. Install
 
 ```bash
-npm install                          # frontend (repo root)
+npm install                     # frontend (repo root)
 cd signaling && npm install && cd ..
 ```
 
-## Running locally
-
-Two processes, two terminals:
+### 5. Start
 
 ```bash
-# terminal 1 — signaling server (:4000)
-cd signaling && npm start            # or: npm run dev  (node --watch)
+# Terminal 1 — signaling server on :4000
+cd signaling && npm start
 
-# terminal 2 — Next.js frontend (:3000)
+# Terminal 2 — Next.js on :3000
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Project layout
+---
+
+## 📁 Project Layout
 
 ```
-app/                      Next.js App Router
-  api/auth/[...nextauth]/ NextAuth route
-  api/rooms/              create + validate room
-  room/[code]/            room page, call client, WebRTC hook
-  _components/            UI (nav, room/ lobby + tiles, …)
-lib/                      auth, mongodb, rooms lookup, room codes, ice servers
-models/                   Mongoose User + Room (TTL index)
-signaling/                Express + Socket.io service (own package.json)
-  lib/                    db connection, room registry + state machine
-  models/                 read-only Room
-scripts/                  throwaway verification scripts (per phase)
-task.md                   phase-by-phase status
-AGENTS.md                 full locked spec
+app/
+  api/auth/[...nextauth]/   NextAuth Google OAuth route
+  api/rooms/                Create + validate room endpoints
+  room/[code]/              Room page, call UI, WebRTC hook
+  _components/              All UI components (nav, lobby, video tiles…)
+  dashboard/                Post-login dashboard
+lib/                        Auth helpers, MongoDB client, ICE config, room utils
+models/                     Mongoose schemas — User, Room (TTL index)
+signaling/                  Separate Express + Socket.io service
+  lib/                      DB connection, room registry + state machine
+  models/                   Read-only Room model
+public/                     Static assets (App.png, etc.)
 ```
 
-## How a call works
+---
 
-1. **Create** — a signed-in host POSTs `/api/rooms`; gets a code + shareable link.
-   The room is saved with a TTL expiry.
-2. **Knock** — anyone opening the link captures their camera, then emits
-   `room:join`. The signaling server validates the room and puts them in the lobby
-   (the host is auto-admitted and bypasses it).
-3. **Admit** — the host sees each request and Accepts or Declines. On accept, the
-   joiner becomes a participant and the WebRTC handshake begins.
-4. **Connect** — the peer already in the call sends the offer; offer/answer/ICE
-   are relayed through Socket.io; media then flows directly peer-to-peer.
-5. **Leave** — leaving (or disconnecting) tears down that peer's connections on
-   everyone else's side.
+## 🌐 Deployment
 
-Capacity is enforced server-side (4 today, 6 in Phase 5). The next knock past the
-cap gets a "room full" response with no lobby entry.
+| Service | Platform | URL |
+|---|---|---|
+| Frontend (Next.js) | Vercel | [bajajletsmeet.vercel.app](https://bajajletsmeet.vercel.app/) |
+| Signaling (Socket.io) | Render | [letsmeet-9ihi.onrender.com](https://letsmeet-9ihi.onrender.com) |
+| Database | MongoDB Atlas | Private |
 
-## Verification
+> Render's free tier spins down after inactivity. If the app hangs on connecting,
+> [visit the backend URL](https://letsmeet-9ihi.onrender.com) to wake it up, then refresh.
 
-Each phase ships a throwaway script in `scripts/` (run with the env file):
+---
 
-```bash
-node --env-file=.env.local scripts/test-waiting-room.mjs    # signaling state machine
-node --env-file=.env.local scripts/test-webrtc-relay.mjs    # offer/answer/ICE relay
-# append `clean` to remove the room a test seeds
-```
+## 🚫 Out of Scope (v1)
 
-The actual media path (getUserMedia / RTCPeerConnection) is browser-only and
-verified manually: open the room in two tabs (one signed-in host, one incognito
-guest), knock, accept, and confirm both tiles show live video.
+- No email/password login — Google only, always
+- No in-call text chat
+- No call recording
+- No virtual backgrounds or live captions
+- No simultaneous multi-person screen share (one at a time)
+- No SFU/media server — raising past ~4–6 participants would require LiveKit or mediasoup (a different architecture entirely)
+- No breakout rooms
 
-## Deployment
+---
 
-- Frontend → **Vercel**
-- Signaling → **Render** or **Railway** (needs a long-lived connection; not Vercel)
+## 👨‍💻 Author
 
-Set the same env vars in each platform, and point `NEXT_PUBLIC_SIGNALING_URL` /
-`CLIENT_ORIGIN` at the deployed URLs. Cross-network calls need a real TURN server
-(Phase 9).
+Built by **Sahil Bajaj**
 
-## Out of scope (v1)
+📧 [sahilbajaj2004@gmail.com](mailto:sahilbajaj2004@gmail.com)
 
-No email/password, no in-call chat, no recording, no SFU/media server (the mesh
-caps participants — raising past ~6 would require an SFU like LiveKit or mediasoup,
-a different architecture). See `AGENTS.md` for the complete list.
+---
+
+<p align="center">Made with ☕ and WebRTC</p>
