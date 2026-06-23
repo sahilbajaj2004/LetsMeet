@@ -3,7 +3,7 @@ import ThemeToggle from "./theme-toggle";
 import NavAuth from "./nav-auth";
 
 // TODO: replace with your actual portfolio URL
-const PORTFOLIO_URL = "https://sahilbajaj.dev";
+const PORTFOLIO_URL = "https://sahilbajajkaportfolio.vercel.app/";
 
 export default function SiteNav() {
   return (
