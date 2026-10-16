@@ -1,9 +1,9 @@
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+This version has breaking changes - APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
-LETSMEET — FULL PROJECT PLAN
+LETSMEET - FULL PROJECT PLAN
 ========================================
 (Google Meet style, 4-participant cap, OAuth + Guest hybrid)
 
@@ -18,7 +18,7 @@ TECH STACK (Final, Locked)
 2. Tailwind CSS
    Use: styling only. No functional role.
 
-3. NextAuth.js (Auth.js) — Google provider only
+3. NextAuth.js (Auth.js) - Google provider only
    Use: handles Google OAuth login, session management, no email/password
    option exists anywhere in the app.
 
@@ -46,10 +46,10 @@ TECH STACK (Final, Locked)
    (TURN). Without this, some users silently can't connect.
 
 8. Zustand
-   Use: frontend state — who's in the call, mic/cam status, waiting
+   Use: frontend state - who's in the call, mic/cam status, waiting
    room queue (host side), connection status.
 
-9. Cloudinary (OPTIONAL — not committed yet, flagged below)
+9. Cloudinary (OPTIONAL - not committed yet, flagged below)
    Use: only if you later want call recordings or profile picture
    uploads. Has zero role in the live call itself.
 
@@ -78,7 +78,7 @@ IDENTITY DISPLAY
 - Logged-in member: full name + avatar shown
 - Guest (not logged in): only the typed display name shown, no avatar
 
-WAITING ROOM (applies to EVERYONE — logged-in members AND guests)
+WAITING ROOM (applies to EVERYONE - logged-in members AND guests)
 - Anyone joining a room, regardless of login status, enters a waiting
   state first
 - Host sees live "X wants to join" requests
@@ -137,11 +137,11 @@ EXPLICITLY OUT OF SCOPE (v1)
 - No virtual backgrounds
 - No live captions
 - No simultaneous multi-person screen share (one at a time, see above)
-- No SFU/media server (mediasoup, LiveKit) — only revisit if
+- No SFU/media server (mediasoup, LiveKit) - only revisit if
   participant cap needs to rise above ~4-6 in a future version
 
 
-HOW TO START — STEP BY STEP
+HOW TO START - STEP BY STEP
 ========================================
 
 You need TWO separate project folders. Don't put the signaling server
@@ -155,7 +155,7 @@ Suggested folder structure on your machine:
     signaling/     <- Node.js + Socket.io server
 
 
-STEP 1 — Create the Next.js frontend
+STEP 1 - Create the Next.js frontend
 
   npx create-next-app@latest frontend
 
@@ -171,7 +171,7 @@ STEP 1 — Create the Next.js frontend
   Confirm it loads at http://localhost:3000 before moving on.
 
 
-STEP 2 — Create the signaling server (separate folder, separate repo
+STEP 2 - Create the signaling server (separate folder, separate repo
 if you want clean deploys)
 
   mkdir signaling
@@ -188,7 +188,7 @@ if you want clean deploys)
   Test it responds before writing any real event logic.
 
 
-STEP 3 — Set up MongoDB
+STEP 3 - Set up MongoDB
 
   - Create a free MongoDB Atlas cluster (atlas.mongodb.com) OR run
     Mongo locally if you prefer (mongod, or Docker: 
@@ -199,7 +199,7 @@ STEP 3 — Set up MongoDB
     npm install mongoose
 
 
-STEP 4 — Set up Google OAuth credentials
+STEP 4 - Set up Google OAuth credentials
 
   - Go to console.cloud.google.com
   - Create a new project (or use an existing one)
@@ -217,7 +217,7 @@ STEP 4 — Set up Google OAuth credentials
     npm install next-auth
 
 
-STEP 5 — Confirm both projects can talk to each other
+STEP 5 - Confirm both projects can talk to each other
 
   - In the signaling server, configure CORS to allow requests from
     http://localhost:3000
@@ -239,7 +239,7 @@ phase assumes that foundation already works.
 BUILD PHASES
 ========================================
 
-PHASE 0 — Environment & Project Setup
+PHASE 0 - Environment & Project Setup
 (see HOW TO START above for exact commands)
 - Next.js app running locally
 - Signaling server running locally
@@ -247,29 +247,29 @@ PHASE 0 — Environment & Project Setup
 - Google OAuth credentials configured
 - Frontend and signaling server confirmed talking to each other
 
-PHASE 1 — Authentication
+PHASE 1 - Authentication
 - Integrate NextAuth.js with Google provider
 - Build login page / "Sign in with Google" button
 - Build session handling (protect routes that require login)
 - Confirm logged-in user data (name, avatar, email) is accessible
   in both frontend and passed to backend when needed
 
-PHASE 2 — Room Creation & Database
+PHASE 2 - Room Creation & Database
 - Define Mongoose schemas: User, Room (with TTL index on expiry field)
-- Build "Create Room" flow (logged-in only) — generates room code +
+- Build "Create Room" flow (logged-in only) - generates room code +
   shareable link, saves to MongoDB
 - Build room validation route: check if a room code is valid, expired,
   or doesn't exist
 - Build the "room not found / expired" UI state
 
-PHASE 3 — Signaling Server Core
+PHASE 3 - Signaling Server Core
 - Build Socket.io server: handle connect/disconnect, room join events
 - Build waiting room state machine: pending → accepted/declined →
   in-call → left/kicked
 - Build host-side "incoming join requests" event handling
 - Build accept/decline events and propagate result to the waiting user
 
-PHASE 4 — WebRTC Core (2-person call first)
+PHASE 4 - WebRTC Core (2-person call first)
 - Implement getUserMedia (camera/mic capture)
 - Implement RTCPeerConnection setup between exactly 2 users
 - Wire offer/answer/ICE candidate exchange through the signaling server
@@ -277,7 +277,7 @@ PHASE 4 — WebRTC Core (2-person call first)
 - Integrate TURN/STUN config and test on a network that isn't your
   home wifi (mobile hotspot, different network) to catch NAT issues early
 
-PHASE 5 — Mesh Scaling to 4 Participants
+PHASE 5 - Mesh Scaling to 4 Participants
 - Extend peer connection logic to handle multiple simultaneous peers
   (each participant connects to every other participant)
 - Test actual video/audio quality at 3 and 4 participants on varied
@@ -285,7 +285,7 @@ PHASE 5 — Mesh Scaling to 4 Participants
 - Handle a participant leaving mid-call (clean up their peer connections
   on everyone else's side)
 
-PHASE 6 — Host Controls
+PHASE 6 - Host Controls
 - Build host UI: list of current participants, mute/kick buttons per
   participant, "end call for all" button
 - Wire kick event: signaling server forcibly disconnects target
@@ -296,7 +296,7 @@ PHASE 6 — Host Controls
 - Wire end-call-for-all: signaling server broadcasts disconnect to
   every participant, room is torn down
 
-PHASE 7 — Member Controls & Screen Share
+PHASE 7 - Member Controls & Screen Share
 - Build mute self / camera toggle / leave buttons (all participants)
 - Implement getDisplayMedia for screen share, available to everyone
 - Enforce one-active-share-at-a-time via Socket.io broadcast
@@ -305,13 +305,13 @@ PHASE 7 — Member Controls & Screen Share
 - Detect native "Stop sharing" browser button via track.onended and
   auto-revert to camera
 
-PHASE 8 — Identity Display & Polish
+PHASE 8 - Identity Display & Polish
 - Show full name + avatar for logged-in members
 - Show typed name only for guests, no avatar slot or a generic placeholder
 - Waiting room UI: clean "waiting for host to let you in" screen for
   the joining user, separate from the host's "approve requests" view
 
-PHASE 9 — Testing & Deployment
+PHASE 9 - Testing & Deployment
 - Deploy Next.js frontend to Vercel
 - Deploy Socket.io signaling server to Render or Railway
 - Test full flow across actual different networks (not all on your wifi):
@@ -322,10 +322,10 @@ PHASE 9 — Testing & Deployment
 - Confirm kicked/declined users can't sneak back in via the same link
 
 
-OPEN ITEMS — NOT YET DECIDED, REVISIT LATER
+OPEN ITEMS - NOT YET DECIDED, REVISIT LATER
 ========================================
 - Reconnection handling depth (basic refresh vs automatic recovery)
 - Whether call recording (Cloudinary) gets added in a future version
 - Whether participant cap ever needs to rise past 4 (would require
-  switching mesh to an SFU like LiveKit or mediasoup — a different
+  switching mesh to an SFU like LiveKit or mediasoup - a different
   architecture, not a small change)

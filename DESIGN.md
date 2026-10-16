@@ -1,6 +1,6 @@
 # Design
 
-Visual system for LetsMeet. Aesthetic lane: **live-signal dark** — a near-black
+Visual system for LetsMeet. Aesthetic lane: **live-signal dark** - a near-black
 "control room" canvas carrying one committed signal-green that behaves like an
 on-air tally light. Color strategy: **Committed** (one saturated color does the
 emotional work; everything else is neutral). Dark is the default theme; a light
@@ -22,7 +22,7 @@ Tailwind v4 via `@theme inline` as `--color-*` utilities.
 | Ink | `--ink` | `oklch(0.97 0.005 150)` | primary text (~17:1 on canvas) |
 | Muted | `--muted` | `oklch(0.74 0.012 150)` | secondary text (≥ 4.5:1) |
 | Faint | `--faint` | `oklch(0.58 0.012 150)` | tertiary / mono labels (large only) |
-| **Live** | `--live` | `oklch(0.87 0.21 128)` | THE accent — CTAs, on-air dot, pulses |
+| **Live** | `--live` | `oklch(0.87 0.21 128)` | THE accent - CTAs, on-air dot, pulses |
 | Live-deep | `--live-deep` | `oklch(0.80 0.19 132)` | hover / pressed |
 | On-live | `--on-live` | `oklch(0.16 0.03 150)` | text on a live-green fill |
 
@@ -50,7 +50,7 @@ honest technical data only.
 
 - **Display + body:** **Geist** (`next/font/google`). Headlines at 600–700, tight
   tracking (≥ -0.03em, never below -0.04em). Body 400–500.
-- **Data / labels:** **Geist Mono** — reserved for real technical metadata
+- **Data / labels:** **Geist Mono** - reserved for real technical metadata
   (`P2P MESH · 4 PEERS · NO SERVER`, room codes, status). Never decorative.
 - Scale: fluid `clamp()`, ratio ≥ 1.25. Hero display max ≤ 6rem.
 - Dark mode line-height bumped +0.05 (light type reads lighter).
@@ -66,7 +66,7 @@ honest technical data only.
 
 ## Imagery / Visual
 
-- **Hero centerpiece:** a custom-rendered **K4 mesh** — 4 peer nodes, 6 edges
+- **Hero centerpiece:** a custom-rendered **K4 mesh** - 4 peer nodes, 6 edges
   (complete graph = the literal P2P topology), with signal pulses traveling the
   edges. SVG structure + `requestAnimationFrame` for pulses. Decorative
   (`aria-hidden`) with a text equivalent adjacent.

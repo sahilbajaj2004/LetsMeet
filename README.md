@@ -1,4 +1,4 @@
-# 📹 LetsMeet — Peer-to-Peer Video Rooms
+# 📹 LetsMeet - Peer-to-Peer Video Rooms
 
 <p align="center">
   <img src="public/App.png" alt="LetsMeet App Screenshot" width="100%" />
@@ -22,14 +22,14 @@
 
 ## 🔍 Overview
 
-**LetsMeet** is a private, peer-to-peer video calling app for up to **4 people** — no media server in the middle. Audio and video travel straight browser-to-browser via WebRTC. Sign in with Google to host; guests join with just a display name. Every joiner waits in a lobby until the host lets them in.
+**LetsMeet** is a private, peer-to-peer video calling app for up to **4 people** - no media server in the middle. Audio and video travel straight browser-to-browser via WebRTC. Sign in with Google to host; guests join with just a display name. Every joiner waits in a lobby until the host lets them in.
 
-- 🟢 **Zero media server** — WebRTC P2P mesh, your video never touches a server
-- 🔐 **Waiting room by default** — host approves every join, no surprise drop-ins
-- 👑 **Host controls** — mute, kick, or end the call for everyone
-- 🖥️ **Screen share** — one person at a time, auto-reverts when you stop sharing
-- 👤 **Guest-friendly** — no account needed to join, just type a name
-- 🔗 **Shareable links** — one link, anyone can knock
+- 🟢 **Zero media server** - WebRTC P2P mesh, your video never touches a server
+- 🔐 **Waiting room by default** - host approves every join, no surprise drop-ins
+- 👑 **Host controls** - mute, kick, or end the call for everyone
+- 🖥️ **Screen share** - one person at a time, auto-reverts when you stop sharing
+- 👤 **Guest-friendly** - no account needed to join, just type a name
+- 🔗 **Shareable links** - one link, anyone can knock
 
 > ⚠️ **Backend note:** The signaling server is on Render's free tier and may be sleeping.
 > If the app doesn't connect, [click here to wake it up](https://letsmeet-9ihi.onrender.com), then refresh the page.
@@ -38,7 +38,7 @@
 
 ## 🏗️ Architecture
 
-Two separately deployed services — this split is intentional. Vercel's serverless functions can't hold the persistent Socket.io connection the signaling server needs.
+Two separately deployed services - this split is intentional. Vercel's serverless functions can't hold the persistent Socket.io connection the signaling server needs.
 
 ```
 ┌──────────────────────────┐         ┌──────────────────────────┐
@@ -61,17 +61,17 @@ Two separately deployed services — this split is intentional. Vercel's serverl
 ## ✨ Features
 
 ### 🔑 Authentication
-- Sign in with Google — no email/password anywhere
+- Sign in with Google - no email/password anywhere
 - Session persists across visits (NextAuth.js)
 - Logged-in users show full name + Google avatar; guests show typed name only
 
 ### 🏠 Room Management
 - Only logged-in users can **create** a room
 - Generates a unique code + shareable link
-- Room **auto-expires** and deletes from MongoDB via TTL index — no manual cleanup
+- Room **auto-expires** and deletes from MongoDB via TTL index - no manual cleanup
 - Anyone can check a code: valid / expired / not found
 
-### 🚪 Waiting Room (everyone waits — logged in or guest)
+### 🚪 Waiting Room (everyone waits - logged in or guest)
 - Every joiner enters a lobby first
 - Host sees live "X wants to join" notifications
 - Host accepts or declines each individually
@@ -92,13 +92,13 @@ Two separately deployed services — this split is intentional. Vercel's serverl
 - Leave the call individually (doesn't affect others)
 
 ### 🖥️ Screen Share
-- Available to all participants — no host gate
+- Available to all participants - no host gate
 - Only **one person** can share at a time (enforced via Socket.io broadcast)
-- Native browser "Stop sharing" button detected via `track.onended` — auto-reverts to camera
+- Native browser "Stop sharing" button detected via `track.onended` - auto-reverts to camera
 
 ### 🔒 Capacity
 - Max **4 participants** per room (P2P mesh limit)
-- 5th joiner gets "room full" — no lobby entry offered
+- 5th joiner gets "room full" - no lobby entry offered
 
 ---
 
@@ -108,7 +108,7 @@ Two separately deployed services — this split is intentional. Vercel's serverl
 |---|---|
 | Frontend | Next.js 14 (App Router, JSX) |
 | Styling | Tailwind CSS v4 |
-| Auth | NextAuth.js v4 — Google OAuth only |
+| Auth | NextAuth.js v4 - Google OAuth only |
 | Database | MongoDB Atlas + Mongoose (TTL index on rooms) |
 | Signaling | Node.js + Express 5 + Socket.io 4 (ESM) |
 | Media | Native WebRTC (`RTCPeerConnection`, `getUserMedia`, `getDisplayMedia`) |
@@ -125,9 +125,9 @@ Two separately deployed services — this split is intentional. Vercel's serverl
 1. CREATE   →  Host signs in, clicks "New Room" → gets a code + shareable link
 2. SHARE    →  Host shares the link with up to 3 others
 3. KNOCK    →  Guests open the link, enter a name (or sign in), click "Join"
-4. LOBBY    →  Host sees "X wants to join" — clicks Accept or Decline
+4. LOBBY    →  Host sees "X wants to join" - clicks Accept or Decline
 5. CONNECT  →  WebRTC handshake relayed through Socket.io (offer / answer / ICE)
-6. CALL     →  Audio & video flow peer-to-peer — server is out of the loop
+6. CALL     →  Audio & video flow peer-to-peer - server is out of the loop
 7. LEAVE    →  Anyone can leave; host can kick or end call for all
 ```
 
@@ -135,12 +135,12 @@ Two separately deployed services — this split is intentional. Vercel's serverl
 
 ## 🖥️ Running Locally
 
-You need **two terminals** — frontend and signaling server run as separate processes.
+You need **two terminals** - frontend and signaling server run as separate processes.
 
 ### Prerequisites
 - Node.js ≥ 20.9
 - MongoDB Atlas cluster (or local `mongod`)
-- Google OAuth credentials — Web app type, redirect URI: `http://localhost:3000/api/auth/callback/google`
+- Google OAuth credentials - Web app type, redirect URI: `http://localhost:3000/api/auth/callback/google`
 
 ### 1. Clone
 
@@ -149,7 +149,7 @@ git clone https://github.com/your-username/letsmeet.git
 cd letsmeet
 ```
 
-### 2. Frontend env — `.env.local` (repo root)
+### 2. Frontend env - `.env.local` (repo root)
 
 ```bash
 GOOGLE_CLIENT_ID=...
@@ -166,7 +166,7 @@ NEXT_PUBLIC_SIGNALING_URL=http://localhost:4000
 # NEXT_PUBLIC_TURN_CRED=
 ```
 
-### 3. Signaling env — `signaling/.env`
+### 3. Signaling env - `signaling/.env`
 
 ```bash
 PORT=4000
@@ -184,10 +184,10 @@ cd signaling && npm install && cd ..
 ### 5. Start
 
 ```bash
-# Terminal 1 — signaling server on :4000
+# Terminal 1 - signaling server on :4000
 cd signaling && npm start
 
-# Terminal 2 — Next.js on :3000
+# Terminal 2 - Next.js on :3000
 npm run dev
 ```
 
@@ -205,7 +205,7 @@ app/
   _components/              All UI components (nav, lobby, video tiles…)
   dashboard/                Post-login dashboard
 lib/                        Auth helpers, MongoDB client, ICE config, room utils
-models/                     Mongoose schemas — User, Room (TTL index)
+models/                     Mongoose schemas - User, Room (TTL index)
 signaling/                  Separate Express + Socket.io service
   lib/                      DB connection, room registry + state machine
   models/                   Read-only Room model
@@ -229,12 +229,12 @@ public/                     Static assets (App.png, etc.)
 
 ## 🚫 Out of Scope (v1)
 
-- No email/password login — Google only, always
+- No email/password login - Google only, always
 - No in-call text chat
 - No call recording
 - No virtual backgrounds or live captions
 - No simultaneous multi-person screen share (one at a time)
-- No SFU/media server — raising past ~4–6 participants would require LiveKit or mediasoup (a different architecture entirely)
+- No SFU/media server - raising past ~4–6 participants would require LiveKit or mediasoup (a different architecture entirely)
 - No breakout rooms
 
 ---

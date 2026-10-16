@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-// Read-only mirror of the app's models/Room.js — signaling only does
+// Read-only mirror of the app's models/Room.js - signaling only does
 // `Room.findOne({ code })` to validate a room and read its host. The Next.js app
 // owns the canonical schema, the unique index, and the TTL index; we deliberately
 // don't redeclare those here (no writes happen from this process).

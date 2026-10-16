@@ -181,7 +181,7 @@ export function useWebRTC({ socket, localStream }) {
     }
   }, []);
 
-  // Send a fresh offer on an already-connected pc — used to renegotiate when the
+  // Send a fresh offer on an already-connected pc - used to renegotiate when the
   // screen track is added or removed. Safe from glare because only the presenter
   // calls this and the original handshake is long settled (stable state).
   const renegotiate = useCallback(
@@ -269,7 +269,7 @@ export function useWebRTC({ socket, localStream }) {
           console.error("[webrtc] addIceCandidate failed:", err.message);
         }
       } else {
-        // Remote description not set yet — buffer and flush after it lands.
+        // Remote description not set yet - buffer and flush after it lands.
         const q = pendingIceRef.current.get(from) ?? [];
         q.push(candidate);
         pendingIceRef.current.set(from, q);
@@ -278,7 +278,7 @@ export function useWebRTC({ socket, localStream }) {
 
     const onPeerLeft = ({ socketId }) => closePeer(socketId);
 
-    // A peer toggled their mic/cam — merge the new flags into their entry so the
+    // A peer toggled their mic/cam - merge the new flags into their entry so the
     // tile re-renders (avatar when cam off, mic-off badge when muted).
     const onPeerMedia = ({ socketId, media }) =>
       setPeers((prev) => {
@@ -315,11 +315,11 @@ export function useWebRTC({ socket, localStream }) {
       screenStreamRef.current = stream;
       const track = stream.getVideoTracks()[0];
       if (!track) return;
-      // Hint the encoder to favour sharpness over framerate — this is code/text.
+      // Hint the encoder to favour sharpness over framerate - this is code/text.
       try {
         track.contentHint = "detail";
       } catch {
-        /* contentHint unsupported — non-fatal */
+        /* contentHint unsupported - non-fatal */
       }
       for (const [remoteId, pc] of pcsRef.current) {
         const sender = pc.addTrack(track, stream);
@@ -382,7 +382,7 @@ export function useWebRTC({ socket, localStream }) {
 }
 
 // Pin a sender's outbound bitrate so the mesh fits a home uplink. Unsupported
-// params (older browsers) are swallowed — it's a best-effort cap.
+// params (older browsers) are swallowed - it's a best-effort cap.
 function capBitrate(sender, maxBitrate) {
   if (!sender) return;
   const params = sender.getParameters();

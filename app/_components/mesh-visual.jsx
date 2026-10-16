@@ -49,7 +49,7 @@ export default function MeshVisual() {
     };
 
     if (reduce) {
-      // Static, legible snapshot — no animation loop.
+      // Static, legible snapshot - no animation loop.
       pulses.forEach((p, i) => {
         const el = pulseRefs.current[i];
         if (!el) return;
@@ -116,7 +116,7 @@ export default function MeshVisual() {
 
   return (
     <div className="relative mx-auto w-full max-w-[min(34rem,92vw)]">
-      {/* Soft presence glow behind the center peer — single, low, not an "orb field". */}
+      {/* Soft presence glow behind the center peer - single, low, not an "orb field". */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-1/2 top-1/2 -z-10 size-[68%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"

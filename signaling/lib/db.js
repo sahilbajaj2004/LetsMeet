@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 // Read-only Mongo connection for the signaling server. It only validates rooms
-// and reads `room.host` — the Next.js app owns the schema, TTL index, and all
+// and reads `room.host` - the Next.js app owns the schema, TTL index, and all
 // writes. Cached so repeated joins reuse one connection (mirror of the app's
 // lib/mongodb.js).
 const MONGODB_URI = process.env.MONGODB_URI;

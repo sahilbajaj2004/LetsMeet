@@ -141,7 +141,7 @@ body {
 }
 
 /* Reveal: content is ALWAYS visible by default (opacity 1). The entrance is purely
-   additive — it only plays once JS adds [data-revealed] on scroll. If that never
+   additive - it only plays once JS adds [data-revealed] on scroll. If that never
    happens (no JS, reduced motion, crawlers, headless renderers), the content is
    already there. The reveal enhances a visible default; it never gates it. */
 [data-reveal][data-revealed] {

@@ -6,7 +6,7 @@ import Logo from "../_components/logo";
 import GoogleSignInButton from "../_components/google-signin-button";
 
 export const metadata = {
-  title: "Sign in — LetsMeet",
+  title: "Sign in - LetsMeet",
 };
 
 export default async function LoginPage({ searchParams }) {
@@ -31,7 +31,7 @@ export default async function LoginPage({ searchParams }) {
           </h1>
           <p className="mt-2 text-pretty text-sm leading-relaxed text-muted">
             Google sign-in is the only way in. You need an account to create a
-            room — guests join with just a name once you share the link.
+            room - guests join with just a name once you share the link.
           </p>
 
           <div className="mt-8">

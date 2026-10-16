@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-// A room is just metadata — a code, who owns it, and when it dies. Audio/video
+// A room is just metadata - a code, who owns it, and when it dies. Audio/video
 // never touches this; that's peer-to-peer. Rooms self-delete via a TTL index
 // on `expiresAt`, so there's no cleanup job.
 const RoomSchema = new mongoose.Schema(

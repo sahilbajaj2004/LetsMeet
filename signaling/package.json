@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "main": "index.js",
-  "description": "LetsMeet signaling server — Socket.io relay for waiting room, host controls, and WebRTC handshake. Deployed separately from the Next.js frontend.",
+  "description": "LetsMeet signaling server - Socket.io relay for waiting room, host controls, and WebRTC handshake. Deployed separately from the Next.js frontend.",
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js"

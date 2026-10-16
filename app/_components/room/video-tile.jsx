@@ -52,7 +52,7 @@ export default function VideoTile({
       : stream?.getVideoTracks?.().some((t) => t.enabled);
   const progress = connectLabel(status);
 
-  // Fills its grid cell — the call layout sizes cells, the tile just covers them.
+  // Fills its grid cell - the call layout sizes cells, the tile just covers them.
   return (
     <div
       className={`relative size-full min-h-0 overflow-hidden rounded-2xl border border-border bg-surface-2 ${className}`}

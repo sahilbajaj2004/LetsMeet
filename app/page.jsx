@@ -8,7 +8,7 @@ const STEPS = [
   {
     n: "01",
     title: "Spin up a room",
-    body: "Sign in with Google and create a room. You get a short code and a shareable link that expires on its own — no cleanup, no leftovers.",
+    body: "Sign in with Google and create a room. You get a short code and a shareable link that expires on its own - no cleanup, no leftovers.",
   },
   {
     n: "02",
@@ -55,7 +55,7 @@ export default function Home() {
                 >
                   LetsMeet is a video room for up to four people, built on a
                   peer-to-peer mesh. Audio and video travel straight from browser
-                  to browser — never through a media server we could see.
+                  to browser - never through a media server we could see.
                 </p>
 
                 <div
@@ -88,7 +88,7 @@ export default function Home() {
               <div className="motion-safe:animate-[reveal-up_1s_var(--ease-out-expo)_both] [animation-delay:200ms]">
                 <MeshVisual />
                 <p className="mt-2 text-center font-mono text-[0.7rem] uppercase tracking-[0.16em] text-faint">
-                  A live 4-peer mesh — every line is a direct connection
+                  A live 4-peer mesh - every line is a direct connection
                 </p>
               </div>
             </div>
@@ -103,7 +103,7 @@ export default function Home() {
                 From link to live in three steps.
               </h2>
               <p className="mt-4 max-w-md text-pretty leading-relaxed text-muted">
-                The host stays in control the whole way — nothing connects until
+                The host stays in control the whole way - nothing connects until
                 you say so.
               </p>
             </Reveal>
@@ -148,7 +148,7 @@ export default function Home() {
             </Reveal>
 
             <div className="mt-12 grid auto-rows-fr gap-4 md:grid-cols-3">
-              {/* Privacy — the anchor feature */}
+              {/* Privacy - the anchor feature */}
               <Reveal
                 id="privacy"
                 className="flex scroll-mt-24 flex-col justify-between gap-8 rounded-2xl border border-border bg-surface p-8 md:col-span-2 md:row-span-2"
@@ -161,7 +161,7 @@ export default function Home() {
                     Most video apps route your camera through their servers.
                     LetsMeet doesn&apos;t. The mesh connects browsers directly, so
                     the call never lands somewhere we could record. Our database
-                    only holds the room itself — the conversation isn&apos;t ours
+                    only holds the room itself - the conversation isn&apos;t ours
                     to keep.
                   </p>
                 </div>
@@ -209,12 +209,12 @@ export default function Home() {
                   Nobody slips in
                 </h3>
                 <p className="text-pretty text-sm leading-relaxed text-muted">
-                  Every join — member or guest — waits for approval. Decline
+                  Every join - member or guest - waits for approval. Decline
                   someone and they&apos;re locked out of that session.
                 </p>
               </Reveal>
 
-              {/* Capacity — a single deliberate number */}
+              {/* Capacity - a single deliberate number */}
               <Reveal
                 delay={80}
                 className="flex flex-col justify-between gap-4 rounded-2xl border border-border bg-surface p-7"
@@ -242,7 +242,7 @@ export default function Home() {
                   One screen at a time
                 </h3>
                 <p className="max-w-lg text-pretty text-sm leading-relaxed text-muted">
-                  Anyone can share — no host gate — but only one share runs at
+                  Anyone can share - no host gate - but only one share runs at
                   once. Hit your browser&apos;s stop button and your camera comes
                   back on its own.
                 </p>

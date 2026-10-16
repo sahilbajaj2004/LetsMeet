@@ -3,16 +3,16 @@ import Room from "../models/Room.js";
 
 // In-memory presence + waiting-room state machine. This is the live source of
 // truth for "who is in / waiting for a room"; Mongo only stores room metadata.
-// Everything here is ephemeral — if the signaling process restarts, calls drop
+// Everything here is ephemeral - if the signaling process restarts, calls drop
 // and clients re-knock (v1 reconnection = basic, per AGENTS.md).
 //
 // Attendee state machine:
 //   join → "pending"            (member knocks, waits for host)
 //   join → "in_call"            (host bypasses the waiting room)
 //   "pending" → "in_call"       (host accepts)
-//   "pending" → "declined"      (host declines — terminal)
+//   "pending" → "declined"      (host declines - terminal)
 //   "in_call" → "left"          (disconnect / voluntary leave)
-//   "in_call" → "kicked"        (host kicks — removed + blocked, Phase 6)
+//   "in_call" → "kicked"        (host kicks - removed + blocked, Phase 6)
 
 export const MAX_PARTICIPANTS = 4; // mesh cap (AGENTS.md)
 
@@ -26,7 +26,7 @@ const registry = new Map();
 // --- Mongo validation -------------------------------------------------------
 
 // Reads the room from Mongo. The explicit expiry check mirrors lib/rooms.js in
-// the app — TTL sweep lag means a past-expiry room can still exist briefly.
+// the app - TTL sweep lag means a past-expiry room can still exist briefly.
 export async function validateRoom(code) {
   if (!code || typeof code !== "string") return { status: "not_found" };
 
@@ -79,7 +79,7 @@ export function dropRoomIfEmpty(code) {
   return false;
 }
 
-// Phase 6: host-ended teardown — clear everyone and drop the room (declined set
+// Phase 6: host-ended teardown - clear everyone and drop the room (declined set
 // goes with it). Live presence only; the Mongo room doc is left to its TTL.
 export function endRoom(code) {
   const room = registry.get(code);
@@ -101,7 +101,7 @@ export function roleFor(room, identity) {
 }
 
 // Stable-ish block key: real users by id, guests by lowercased name. Guests can
-// rename to dodge a decline — best-effort for v1 (see task.md notes).
+// rename to dodge a decline - best-effort for v1 (see task.md notes).
 export function declinedKey(identity) {
   if (identity?.userId) return `user:${identity.userId}`;
   return `guest:${(identity?.name ?? "").trim().toLowerCase()}`;
@@ -173,7 +173,7 @@ export function removeAttendee(room, socketId) {
   return a;
 }
 
-// In-call peers, minus one socket — used to seed a freshly admitted client and
+// In-call peers, minus one socket - used to seed a freshly admitted client and
 // to broadcast joins/leaves.
 export function listInCall(room, exceptSocketId) {
   const peers = [];

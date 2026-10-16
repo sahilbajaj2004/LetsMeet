@@ -3,7 +3,7 @@
 import { PersonIcon } from "../icons";
 
 // Shared identity avatar, used in the call tile, the host approve list, and the
-// host controls list — one source of truth for the identity-display rule in
+// host controls list - one source of truth for the identity-display rule in
 // AGENTS.md:
 //
 //   • Signed-in WITH a Google photo → the photo.
@@ -22,11 +22,11 @@ export default function Avatar({
   textClass = "text-sm",
   iconClass = "size-1/2",
 }) {
-  // A guest never has an image even if one is somehow passed — enforce the rule.
+  // A guest never has an image even if one is somehow passed - enforce the rule.
   if (image && !isGuest) {
     return (
       // Plain <img>: Google's lh3.googleusercontent.com host isn't in the
-      // next/image allowlist, and avatars are tiny — no optimization needed.
+      // next/image allowlist, and avatars are tiny - no optimization needed.
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={image}

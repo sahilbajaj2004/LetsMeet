@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 // The lobby before knocking: a self-preview plus identity entry. Logged-in users
-// join under their account name; guests type a display name (no avatar — that's
+// join under their account name; guests type a display name (no avatar - that's
 // the identity rule in AGENTS.md). The camera stream captured here is reused for
 // the live call, so permission is asked once.
 export default function PreJoin({
@@ -58,14 +58,14 @@ export default function PreJoin({
         {!showPreview && (
           <div className="grid size-full place-items-center px-6 text-center text-sm text-muted">
             {mediaError
-              ? `Camera unavailable — ${mediaError}. You can still join.`
+              ? `Camera unavailable - ${mediaError}. You can still join.`
               : !previewStream
                 ? "Requesting camera…"
                 : "Camera off"}
           </div>
         )}
 
-        {/* Mic / camera pre-join toggles — overlaid on the preview, Meet-style. */}
+        {/* Mic / camera pre-join toggles - overlaid on the preview, Meet-style. */}
         {previewStream && (
           <div className="absolute inset-x-0 bottom-3 flex justify-center gap-2">
             <LobbyToggle

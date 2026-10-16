@@ -33,7 +33,7 @@ export default function CreateRoom() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* clipboard blocked — link is still visible to copy by hand */
+      /* clipboard blocked - link is still visible to copy by hand */
     }
   }
 

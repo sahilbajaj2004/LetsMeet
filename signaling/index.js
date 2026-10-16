@@ -30,7 +30,7 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3000";
 const app = express();
 app.use(cors({ origin: CLIENT_ORIGIN }));
 
-// Health / liveness — also what Render/Railway hit to confirm the service is up.
+// Health / liveness - also what Render/Railway hit to confirm the service is up.
 app.get("/", (_req, res) => {
   res.json({
     service: "letsmeet-signaling",
@@ -93,7 +93,7 @@ function cleanup(socket) {
     endRoom(code);
     return;
   } else if (attendee.state === "pending") {
-    // Waiter bailed before the host decided — clear them from the host's queue.
+    // Waiter bailed before the host decided - clear them from the host's queue.
     if (room.hostSocketId) {
       io.to(room.hostSocketId).emit("waiting:cancelled", { socketId: socket.id });
     }
@@ -111,7 +111,7 @@ io.on("connection", (socket) => {
   socket.on("room:join", async ({ code, identity: rawIdentity, media } = {}) => {
     try {
       const identity = cleanIdentity(rawIdentity);
-      // Pre-join mic/cam choice — coerced to booleans, defaults to on.
+      // Pre-join mic/cam choice - coerced to booleans, defaults to on.
       const joinMedia = {
         mic: media?.mic !== false,
         cam: media?.cam !== false,
@@ -183,7 +183,7 @@ io.on("connection", (socket) => {
     const target = getAttendee(room, socketId);
     if (!target || target.state !== "pending") return;
 
-    // Capacity is also enforced here — host can't accept past the mesh cap.
+    // Capacity is also enforced here - host can't accept past the mesh cap.
     if (isFull(room)) {
       socket.emit("waiting:error", { socketId, reason: "full" });
       return;
@@ -217,7 +217,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Host declines a waiter — blocked from re-knocking this session.
+  // Host declines a waiter - blocked from re-knocking this session.
   socket.on("waiting:decline", ({ socketId } = {}) => {
     const room = hostRoomFor(socket);
     if (!room) return;
@@ -230,7 +230,7 @@ io.on("connection", (socket) => {
     io.to(socketId).emit("room:declined");
   });
 
-  // --- Host controls (Phase 6) — all gated on this socket being the host ---
+  // --- Host controls (Phase 6) - all gated on this socket being the host ---
 
   // Mute a participant: the server can't force someone's hardware mic, so it just
   // tells that client to disable its own audio track (the client enforces it).
@@ -245,7 +245,7 @@ io.on("connection", (socket) => {
   // Toggle a participant's camera. The server can't reach their hardware, so it
   // asks that client to enable/disable its own video track (the client enforces
   // it, then echoes the new state back via media:update). Mic stays mute-only by
-  // design — the host can't silently reopen someone's mic.
+  // design - the host can't silently reopen someone's mic.
   socket.on("host:cam", ({ socketId, on } = {}) => {
     const room = hostRoomFor(socket);
     if (!room) return;
@@ -305,7 +305,7 @@ io.on("connection", (socket) => {
     relay("webrtc:ice", { to, candidate }),
   );
 
-  // --- Screen share (Phase 7) — one active sharer per room, enforced here ---
+  // --- Screen share (Phase 7) - one active sharer per room, enforced here ---
   // The presenter adds their screen as a SECOND outbound video track over the
   // existing peer connections; these events only arbitrate the single share slot
   // (gating everyone else's Share button) and relay the screen MediaStream.id so
@@ -314,7 +314,7 @@ io.on("connection", (socket) => {
     const room = getRoom(socket.data?.code);
     if (!room) return;
     if (getAttendee(room, socket.id)?.state !== "in_call") return;
-    // Someone else already holds the slot — ignore (the client also gates this).
+    // Someone else already holds the slot - ignore (the client also gates this).
     if (room.sharingSocketId && room.sharingSocketId !== socket.id) return;
     room.sharingSocketId = socket.id;
     room.sharingStreamId = streamId ? String(streamId) : null;

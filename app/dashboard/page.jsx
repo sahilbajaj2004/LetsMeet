@@ -7,7 +7,7 @@ import CreateRoom from "../_components/create-room";
 import JoinByCode from "../_components/join-by-code";
 
 export const metadata = {
-  title: "Dashboard — LetsMeet",
+  title: "Dashboard - LetsMeet",
 };
 
 export default async function DashboardPage() {
@@ -52,7 +52,7 @@ export default async function DashboardPage() {
             </h2>
             <p className="mt-2.5 max-w-md text-pretty leading-relaxed text-muted">
               Get a short code and a shareable link. The room expires on its own
-              after 24 hours — no cleanup.
+              after 24 hours - no cleanup.
             </p>
             <div className="mt-7">
               <CreateRoom />

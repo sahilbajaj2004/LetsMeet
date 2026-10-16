@@ -33,7 +33,7 @@ export default function RoomClient({ code, hostName }) {
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
 
-  // Our own socket id (from room:admitted) — lets us tell "we're the sharer".
+  // Our own socket id (from room:admitted) - lets us tell "we're the sharer".
   const [selfId, setSelfId] = useState(null);
   // Mirror of selfId for the socket listeners, whose effect doesn't re-bind on it.
   const selfIdRef = useRef(null);
@@ -115,7 +115,7 @@ export default function RoomClient({ code, hostName }) {
   // Created in an effect, NOT a useState initializer: client components also
   // render on the server for the initial HTML, and io() must never run during
   // SSR (it would open a stray connection from the Node process). The effect
-  // only runs in the browser. StrictMode's double-mount is safe — cleanup
+  // only runs in the browser. StrictMode's double-mount is safe - cleanup
   // disconnects and the remount makes a fresh socket.
   useEffect(() => {
     const s = io(SIGNALING_URL, { transports: ["websocket", "polling"] });
@@ -162,19 +162,19 @@ export default function RoomClient({ code, hostName }) {
       closeAll();
       setPhase("ended");
     };
-    // Host pressed "End call for all" — same outcome as the host dropping.
+    // Host pressed "End call for all" - same outcome as the host dropping.
     const onEnded = () => {
       closeAll();
       setPhase("ended");
     };
-    // Host kicked us — tear down and show a terminal notice.
+    // Host kicked us - tear down and show a terminal notice.
     const onKicked = () => {
       closeAll();
       setPhase("kicked");
     };
-    // Host muted us — flip the shared mic flag; the audio-track effect enforces it.
+    // Host muted us - flip the shared mic flag; the audio-track effect enforces it.
     const onMuted = () => setMicOn(false);
-    // Host toggled our camera — set camOn to the requested state (the cam effect
+    // Host toggled our camera - set camOn to the requested state (the cam effect
     // enforces it on our track, and the media:update effect echoes it to peers).
     const onHostCam = ({ on }) => setCamOn(on === true);
     // Screen-share slot changed somewhere in the room: gate our own Share button
@@ -224,7 +224,7 @@ export default function RoomClient({ code, hostName }) {
 
   // Release camera/mic once the call is over for us (kicked or ended), so the
   // hardware indicator goes off without waiting for unmount. Stale localStream is
-  // fine here — the effect re-runs when it lands.
+  // fine here - the effect re-runs when it lands.
   useEffect(() => {
     if (phase === "kicked" || phase === "ended") {
       localStream?.getTracks().forEach((t) => t.stop());
@@ -253,7 +253,7 @@ export default function RoomClient({ code, hostName }) {
   }, [socket, removeScreenShare]);
 
   // Start sharing: capture the screen and add it as a SECOND outbound video track
-  // to every peer (face cam stays on), then claim the slot — passing the stream
+  // to every peer (face cam stays on), then claim the slot - passing the stream
   // id so receivers can pick the screen out. Native "Stop sharing" → track.onended.
   const startShare = useCallback(async () => {
     if (!socket || sharing) return;
@@ -427,7 +427,7 @@ export default function RoomClient({ code, hostName }) {
     return <Notice title="Can't join this room" body={body} />;
   }
 
-  // in_call — immersive, full-bleed call that covers the site nav (fixed inset-0).
+  // in_call - immersive, full-bleed call that covers the site nav (fixed inset-0).
   const self = identity;
   const tileCount = peers.size + 1;
   const peerList = [...peers.entries()].map(([socketId, p]) => ({
@@ -442,7 +442,7 @@ export default function RoomClient({ code, hostName }) {
       <div
         className={`grid h-full w-full gap-2 p-2 sm:gap-3 sm:p-3 ${callGridClass(tileCount)}`}
       >
-        {/* Self-tile stays on the camera even while presenting — showing your own
+        {/* Self-tile stays on the camera even while presenting - showing your own
             screen capture here would feed back into an infinity mirror (you're
             already looking at that screen). Remote peers get the screen track. */}
         <VideoTile
@@ -490,7 +490,7 @@ export default function RoomClient({ code, hostName }) {
         })}
       </div>
 
-      {/* Room chip — top-left, since the nav is hidden during the call. */}
+      {/* Room chip - top-left, since the nav is hidden during the call. */}
       <div className="pointer-events-none absolute left-4 top-4 z-10">
         <span className="rounded-full bg-surface/80 px-3 py-1.5 font-mono text-xs text-faint backdrop-blur-md">
           room {code} · {tileCount} in call
@@ -511,7 +511,7 @@ export default function RoomClient({ code, hostName }) {
         </aside>
       )}
 
-      {/* Floating control bar — bottom-center, Meet-style. */}
+      {/* Floating control bar - bottom-center, Meet-style. */}
       <div className="absolute inset-x-0 bottom-5 z-20 flex justify-center px-3">
         <div className="flex max-w-full items-center gap-1.5 overflow-x-auto rounded-full border border-border bg-surface/80 p-1.5 shadow-xl backdrop-blur-md scrollbar-none sm:gap-2">
           <button

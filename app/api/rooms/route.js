@@ -7,7 +7,7 @@ import { generateRoomCode } from "@/lib/roomCode";
 // How long a room lives before the TTL index reaps it.
 const ROOM_TTL_HOURS = 24;
 
-// POST /api/rooms — create a room. Logged-in users only (the host).
+// POST /api/rooms - create a room. Logged-in users only (the host).
 export async function POST(request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {

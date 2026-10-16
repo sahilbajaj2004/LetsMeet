@@ -1,4 +1,4 @@
-// Inline icons — no icon dependency. Stroke inherits currentColor.
+// Inline icons - no icon dependency. Stroke inherits currentColor.
 
 export function SunIcon({ className }) {
   return (
@@ -52,7 +52,7 @@ export function ArrowIcon({ className }) {
   );
 }
 
-// Google "G" brand mark — fixed brand colors, ignores currentColor.
+// Google "G" brand mark - fixed brand colors, ignores currentColor.
 export function GoogleIcon({ className }) {
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
@@ -76,7 +76,7 @@ export function GoogleIcon({ className }) {
   );
 }
 
-// Generic person silhouette — the placeholder for guests (no Google avatar).
+// Generic person silhouette - the placeholder for guests (no Google avatar).
 export function PersonIcon({ className }) {
   return (
     <svg

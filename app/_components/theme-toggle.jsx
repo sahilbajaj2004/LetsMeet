@@ -16,7 +16,7 @@ export default function ThemeToggle() {
     try {
       localStorage.setItem("theme", next);
     } catch {
-      // storage unavailable — toggle still works for the session
+      // storage unavailable - toggle still works for the session
     }
 
     window.setTimeout(() => root.classList.remove("theme-transition"), 400);

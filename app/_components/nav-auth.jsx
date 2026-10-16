@@ -93,7 +93,7 @@ export default function NavAuth() {
 function Avatar({ name, image }) {
   if (image) {
     // Plain <img>: Google's lh3.googleusercontent.com host isn't in the
-    // next/image allowlist, and avatars are tiny — no optimization needed.
+    // next/image allowlist, and avatars are tiny - no optimization needed.
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img

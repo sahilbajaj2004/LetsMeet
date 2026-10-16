@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "LetsMeet — peer-to-peer video rooms",
+  title: "LetsMeet - peer-to-peer video rooms",
   description:
-    "Small, private video rooms for up to 4 people. Audio and video travel browser to browser over a peer-to-peer mesh — never through a media server.",
+    "Small, private video rooms for up to 4 people. Audio and video travel browser to browser over a peer-to-peer mesh - never through a media server.",
   applicationName: "LetsMeet",
   authors: [{ name: "LetsMeet" }],
   openGraph: {
-    title: "LetsMeet — peer-to-peer video rooms",
+    title: "LetsMeet - peer-to-peer video rooms",
     description:
       "Up to 4 people, browser to browser, no media server in the middle.",
     type: "website",
@@ -47,7 +47,7 @@ export default function RootLayout({ children }) {
     >
       <body className="flex min-h-dvh flex-col font-sans">
         {/* Runs before paint via beforeInteractive (injected into <head>), so the
-            theme is set before React hydrates — no FOUC. A raw <script> tag isn't
+            theme is set before React hydrates - no FOUC. A raw <script> tag isn't
             executed when React renders it; next/script is the supported path. */}
         <Script id="theme-init" strategy="beforeInteractive">
           {themeScript}

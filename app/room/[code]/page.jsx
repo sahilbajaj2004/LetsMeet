@@ -4,7 +4,7 @@ import SiteFooter from "../../_components/site-footer";
 import RoomClient from "./room-client";
 
 export const metadata = {
-  title: "Room — LetsMeet",
+  title: "Room - LetsMeet",
 };
 
 export default async function RoomPage({ params }) {
